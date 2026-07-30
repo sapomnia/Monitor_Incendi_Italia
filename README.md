@@ -14,6 +14,7 @@ Python, la pagina non carica librerie esterne. Costo di esercizio: zero.
 | `scripts/build_boundaries.py` | Scarica i confini regionali ISTAT e li semplifica per il web. Da eseguire una volta. |
 | `scripts/build_hotspot_mask.py` | Individua i punti caldi permanenti (acciaierie, vulcani). Settimanale. |
 | `scripts/fetch_fires.py` | Scarica i rilevamenti, li ritaglia sull'Italia e ricalcola la pagina. Giornaliero. |
+| `scripts/rete.py` | Scaricamento HTTP con tre tentativi e attesa crescente, usato da tutti. |
 | `scripts/serve.mjs` | Server statico per l'anteprima locale. |
 | `docs/` | Il sito pubblicato: pagina, confini, dati. |
 | `data/archive/` | Un file per giorno con tutti i rilevamenti grezzi, per le analisi future. |
@@ -41,9 +42,16 @@ Da lì in avanti va da sé: due aggiornamenti al giorno, alle **06:45** e alle
 
 Il giro del mattino è quello canonico e scrive la riga dello storico giornaliero.
 Quello del pomeriggio serve a mostrare gli incendi in corso e aggiorna solo la
-mappa: il workflow gli passa `AGGIORNA_STORICO=0`, altrimenti il valore di ogni
-giorno dipenderebbe da quale esecuzione ha girato per ultima. Se lanci lo script
-a mano la riga viene scritta, perché in quel caso è quello che ti aspetti.
+mappa, altrimenti il valore di ogni giorno dipenderebbe da quale esecuzione ha
+girato per ultima.
+
+Il workflow decide guardando **quale** cron l'ha avviato, e solo quello delle
+06:45 abilita la scrittura. Un avvio manuale da GitHub non tocca lo storico se
+non spunti la casella `aggiorna_storico`, che parte disattivata: serve a rifare
+il giro del mattino quando è fallito, non a testare nel pomeriggio. Da riga di
+comando invece la riga viene scritta, perché è quello che ti aspetti quando
+lanci lo script tu; per evitarlo basta `AGGIORNA_STORICO=0 python3
+scripts/fetch_fires.py`.
 
 Se cambi gli orari del cron, aggiorna anche la costante `AGGIORNAMENTI_UTC` in
 `docs/index.html`: è quella che genera la frase "si aggiorna alle 08:45 e alle
@@ -102,6 +110,14 @@ vengono uniti in un focolaio, con l'FRP sommato.
 
 **Esclusi i rilevamenti a bassa attendibilità**, in larga parte falsi positivi.
 Restano tutti nell'archivio giornaliero, che conserva il dato grezzo integrale.
+
+**Ogni download viene ritentato tre volte** con attesa crescente, rispettando
+l'eventuale `Retry-After` del server. I 502 e 503 passeggeri della NASA
+altrimenti farebbero saltare un sensore per l'intera giornata. Sugli errori
+definitivi come il 404 lo script molla subito, senza attese inutili. Se cade un
+sensore solo, l'aggiornamento prosegue con gli altri e la pagina lo dichiara in
+fondo; se cadono tutti, lo script si ferma senza scrivere e la pagina resta
+all'ultimo dato buono invece di azzerarsi.
 
 ## Limiti da conoscere
 

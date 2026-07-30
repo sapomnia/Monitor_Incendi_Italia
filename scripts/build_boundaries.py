@@ -15,7 +15,8 @@ import json
 import math
 import os
 import sys
-import urllib.request
+
+from rete import scarica
 
 SOURCE_URL = (
     "https://raw.githubusercontent.com/openpolis/geojson-italy/master/"
@@ -129,8 +130,10 @@ def iter_polygons(geometry):
 
 def main():
     print("Scarico i confini da openpolis/geojson-italy ...")
-    with urllib.request.urlopen(SOURCE_URL, timeout=120) as response:
-        source = json.load(response)
+    testo = scarica(SOURCE_URL, "confini regionali")
+    if testo is None:
+        sys.exit("Confini non scaricabili: non tocco il file esistente.")
+    source = json.loads(testo)
 
     features = []
     stats = {"anelli_in": 0, "anelli_out": 0, "vertici_in": 0, "vertici_out": 0}

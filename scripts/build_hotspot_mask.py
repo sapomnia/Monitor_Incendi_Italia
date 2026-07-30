@@ -28,10 +28,10 @@ import io
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+
+from rete import scarica
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MASK = os.path.join(ROOT, "data", "hotspot_permanenti.json")
@@ -54,16 +54,6 @@ ARCO_CONFERMA_GIORNI = 14
 # Un punto che non si accende da tanto tempo smette di essere considerato
 # permanente: gli impianti chiudono, i vulcani si assopiscono.
 SCADENZA_GIORNI = 120
-
-
-def scarica(url, etichetta):
-    try:
-        request = urllib.request.Request(url, headers={"User-Agent": "IncendiFanPage/1.0"})
-        with urllib.request.urlopen(request, timeout=180) as response:
-            return response.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, TimeoutError) as errore:
-        print("  ERRORE su %s: %s" % (etichetta, errore), file=sys.stderr)
-        return None
 
 
 def chiave_cella(lat, lon):
@@ -91,7 +81,7 @@ def main():
     feed_ok = 0
 
     for etichetta, url in FEEDS_7D:
-        testo = scarica(url, etichetta)
+        testo = scarica(url, etichetta, timeout=180)
         if testo is None or not testo.lstrip().lower().startswith("latitude"):
             continue
         feed_ok += 1

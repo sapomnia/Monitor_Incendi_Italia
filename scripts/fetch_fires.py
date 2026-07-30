@@ -20,10 +20,10 @@ import json
 import math
 import os
 import sys
-import urllib.error
-import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+
+from rete import scarica
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOUNDARIES = os.path.join(ROOT, "docs", "regioni.json")
@@ -168,16 +168,6 @@ def distanza_m(lat1, lon1, lat2, lon2):
 # --------------------------------------------------------------------------
 # Scarico e normalizzazione
 # --------------------------------------------------------------------------
-
-def scarica(url, descrizione):
-    try:
-        request = urllib.request.Request(url, headers={"User-Agent": "IncendiFanPage/1.0"})
-        with urllib.request.urlopen(request, timeout=120) as response:
-            return response.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, TimeoutError) as errore:
-        print("  ERRORE su %s: %s" % (descrizione, errore), file=sys.stderr)
-        return None
-
 
 def normalizza_confidenza(valore):
     """VIIRS usa l/n/h, MODIS una percentuale 0-100."""
