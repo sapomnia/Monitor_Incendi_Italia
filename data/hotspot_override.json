@@ -1,0 +1,5 @@
+{
+  "_come_si_usa": "Correzioni manuali alla maschera automatica dei punti caldi. In 'sempre_escludi' metti le coordinate di sorgenti industriali che l'automatismo non ha ancora riconosciuto; in 'sempre_includi' quelle di un incendio vero che si trova entro un chilometro da un punto caldo mascherato e che quindi verrebbe scartato per sbaglio. Il raggio di azione e di 1 km. Il campo 'nota' serve solo a ricordare a te stesso di cosa si tratta.",
+  "sempre_escludi": [],
+  "sempre_includi": []
+}

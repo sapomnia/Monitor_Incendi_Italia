@@ -1,0 +1,38 @@
+name: Aggiorna la maschera dei punti caldi permanenti
+
+on:
+  schedule:
+    # Ogni lunedi alle 04:42 UTC, prima dell'aggiornamento giornaliero.
+    # Settimanale e sufficiente: acciaierie e vulcani non si spostano, e cosi
+    # scarichiamo i feed a 7 giorni una volta invece di sette.
+    - cron: "42 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: punti-caldi
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  maschera:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ricalcola i punti caldi permanenti
+        run: python3 scripts/build_hotspot_mask.py
+
+      - name: Pubblica la maschera aggiornata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/hotspot_permanenti.json
+          if git diff --staged --quiet; then
+            echo "Maschera invariata: non committo."
+            exit 0
+          fi
+          git commit -m "Maschera punti caldi aggiornata al $(date -u '+%Y-%m-%d')"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

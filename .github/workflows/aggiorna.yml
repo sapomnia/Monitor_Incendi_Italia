@@ -1,0 +1,68 @@
+name: Aggiorna i dati degli incendi
+
+on:
+  schedule:
+    # 06:45 UTC, cioe le 08:45 in ora italiana d'estate.
+    #
+    # L'orario non e casuale. I satelliti sorvolano l'Italia in due finestre,
+    # 00:00-03:00 e 10:00-14:00 UTC, e nelle ore 05 e 06 non passa nessuno.
+    # Tagliare la finestra delle 24 ore in quel buco vuol dire che un ritardo
+    # del cron non fa entrare o uscire un intero passaggio satellitare: i
+    # numeri restano confrontabili da un giorno all'altro. Alle 06:45 ci sono
+    # inoltre quasi quattro ore di margine sul ritardo dei dati near real-time,
+    # che e di circa tre ore dal passaggio.
+    #
+    # IMPORTANTE: l'orario deve restare fisso. Spostarlo sposta il taglio e
+    # rende i giorni dello storico non piu confrontabili fra loro.
+    - cron: "45 6 * * *"
+
+    # 15:15 UTC, le 17:15 italiane d'estate: secondo giro per far vedere il
+    # pomeriggio in corso, che d'estate e il momento in cui gli incendi
+    # scoppiano. Cade anch'esso in un'ora senza sorvoli (le 15, 16 e 17 UTC
+    # sono vuote). Non scrive lo storico: vedi AGGIORNA_STORICO piu sotto.
+    - cron: "15 15 * * *"
+  workflow_dispatch:
+
+# Se un'esecuzione e ancora in corso, quella nuova aspetta: due processi che
+# scrivono gli stessi file finirebbero per litigare sul commit.
+concurrency:
+  group: aggiorna-dati
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nessun setup-python e nessun pip install: gli script usano solo la
+      # libreria standard, quindi il Python di sistema del runner basta.
+      - name: Scarica i rilevamenti e ricalcola la pagina
+        env:
+          # Facoltativo. Se il secret non esiste la variabile resta vuota e gli
+          # script usano i feed pubblici, che non richiedono chiave.
+          FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+          # La serie giornaliera la scrive solo il giro del mattino, cosi il
+          # valore di ogni giorno e sempre misurato alla stessa ora. Il giro del
+          # pomeriggio aggiorna la mappa e basta. Un avvio manuale la scrive,
+          # perche in quel caso github.event.schedule e vuoto.
+          AGGIORNA_STORICO: ${{ github.event.schedule == '15 15 * * *' && '0' || '1' }}
+        run: python3 scripts/fetch_fires.py
+
+      - name: Pubblica i dati aggiornati
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/latest.json docs/storico.json data/archive
+          if git diff --staged --quiet; then
+            echo "Nessuna variazione: non committo."
+            exit 0
+          fi
+          git commit -m "Dati incendi aggiornati al $(date -u '+%Y-%m-%d %H:%M UTC')"
+          # Se nel frattempo e arrivato un altro commit, riallineiamoci invece
+          # di far fallire il push.
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

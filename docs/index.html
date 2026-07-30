@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gli incendi in Italia nelle ultime 24 ore</title>
+<meta name="description" content="Mappa aggiornata ogni giorno dei focolai rilevati dai satelliti NASA sul territorio italiano.">
+<style>
+  :root {
+    --nero: #161616;
+    --fuoco: #FF4901;
+    --carta: #1e1e1e;
+    --linea: #2f2f2f;
+    --terra: #232323;
+    --costa: #3a3a3a;
+    --testo: #f2f0ee;
+    --tenue: #8f8a86;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--nero);
+    color: var(--testo);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 32px; }
+
+  /* Intestazione ------------------------------------------------------- */
+  h1 {
+    font-size: clamp(26px, 5vw, 40px);
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    margin: 0 0 10px;
+    font-weight: 800;
+  }
+  .sommario { color: var(--tenue); font-size: 15px; margin: 0 0 24px; max-width: 62ch; }
+  .sommario b { color: var(--testo); font-weight: 600; }
+
+  /* Numeroni ----------------------------------------------------------- */
+  .cifre {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--linea);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .cifra { background: var(--carta); padding: 14px 16px; }
+  .cifra .valore {
+    font-size: clamp(24px, 4.2vw, 34px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .cifra .valore.acceso { color: var(--fuoco); }
+  .cifra .voce {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--tenue);
+    margin-top: 4px;
+  }
+
+  /* Corpo: mappa + classifica ------------------------------------------ */
+  .corpo { display: grid; grid-template-columns: 1.15fr .85fr; gap: 28px; align-items: start; }
+
+  .mappa-box { position: relative; }
+  svg.mappa { width: 100%; height: auto; display: block; overflow: visible; }
+  .regione { fill: var(--terra); stroke: var(--costa); stroke-width: .5; vector-effect: non-scaling-stroke; }
+  .regione.evidenzia { fill: #33302e; stroke: var(--fuoco); }
+  .focolaio { fill: var(--fuoco); fill-opacity: .55; stroke: var(--fuoco); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .focolaio.notte { fill-opacity: .9; stroke: #ffd0b8; }
+
+  .legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12px;
+    color: var(--tenue);
+    margin-top: 10px;
+  }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px; }
+  .pallino { width: 11px; height: 11px; border-radius: 50%; background: var(--fuoco); opacity: .55; border: 1px solid var(--fuoco); }
+  .pallino.notte { opacity: .95; border-color: #ffd0b8; }
+  .misure { display: inline-flex; align-items: flex-end; gap: 5px; }
+  .misure i { display: block; border-radius: 50%; border: 1px solid var(--fuoco); background: var(--fuoco); opacity: .55; }
+
+  /* Tooltip ------------------------------------------------------------ */
+  .tip {
+    position: absolute;
+    pointer-events: none;
+    background: #000;
+    border: 1px solid var(--linea);
+    border-left: 3px solid var(--fuoco);
+    padding: 8px 11px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity .12s;
+    z-index: 5;
+    max-width: 230px;
+  }
+  .tip.on { opacity: 1; }
+  .tip .luogo { font-weight: 700; }
+  .tip .dato { color: var(--tenue); }
+
+  /* Classifica --------------------------------------------------------- */
+  h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--tenue);
+    font-weight: 700;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--linea);
+  }
+  .riga {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #232323;
+    cursor: default;
+  }
+  .riga:hover { background: #1c1c1c; }
+  .riga .nome { font-size: 14px; font-weight: 600; }
+  .riga .num { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--tenue); white-space: nowrap; }
+  .riga .num b { color: var(--fuoco); font-weight: 700; }
+  .barra { grid-column: 1 / -1; height: 3px; background: #262626; border-radius: 2px; overflow: hidden; }
+  .barra i { display: block; height: 100%; background: var(--fuoco); }
+  .vuoto { color: var(--tenue); font-size: 14px; padding: 12px 0; }
+
+  /* Storico ------------------------------------------------------------ */
+  .storico { margin-top: 26px; }
+  .colonne { display: flex; align-items: flex-end; gap: 2px; height: 56px; }
+  .colonne .col { flex: 1 1 0; background: #2b2b2b; border-radius: 1px 1px 0 0; min-height: 2px; position: relative; }
+  .colonne .col.oggi { background: var(--fuoco); }
+  .assex { display: flex; justify-content: space-between; font-size: 11px; color: var(--tenue); margin-top: 6px; }
+
+  /* Piede -------------------------------------------------------------- */
+  footer {
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--linea);
+    font-size: 12.5px;
+    color: var(--tenue);
+    line-height: 1.6;
+  }
+  footer p { margin: 0 0 8px; }
+  footer b { color: #b8b3af; font-weight: 600; }
+
+  @media (max-width: 760px) {
+    .corpo { grid-template-columns: 1fr; gap: 22px; }
+    .cifre { grid-template-columns: repeat(2, 1fr); }
+    .wrap { padding: 18px 16px 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gli incendi in Italia nelle ultime 24 ore</h1>
+  <p class="sommario" id="sommario">Caricamento dei dati satellitari…</p>
+
+  <div class="cifre" id="cifre"></div>
+
+  <div class="corpo">
+    <div>
+      <div class="mappa-box" id="mappa-box">
+        <svg class="mappa" id="mappa" role="img" aria-labelledby="titolo-mappa"></svg>
+        <title id="titolo-mappa">Mappa dei focolai rilevati sul territorio italiano</title>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div class="legenda">
+        <span><i class="pallino"></i> focolaio diurno</span>
+        <span><i class="pallino notte"></i> ancora acceso di notte</span>
+        <span class="misure" id="misure"></span>
+      </div>
+    </div>
+
+    <div>
+      <h2>Regioni per intensità del fuoco</h2>
+      <div id="classifica"></div>
+
+      <div class="storico" id="storico" hidden>
+        <h2>Focolai giorno per giorno</h2>
+        <div class="colonne" id="colonne"></div>
+        <div class="assex" id="assex"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="piede"></footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TZ = "Europe/Rome";
+
+  // Orari del cron, in UTC: vanno tenuti allineati a
+  // .github/workflows/aggiorna.yml. Li convertiamo in ora italiana a ogni
+  // caricamento invece di scriverli a mano, cosi il testo resta corretto anche
+  // quando scatta l'ora legale.
+  var AGGIORNAMENTI_UTC = ["06:45", "15:15"];
+
+  function elemento(tag, classe, testo) {
+    var nodo = document.createElement(tag);
+    if (classe) nodo.className = classe;
+    if (testo !== undefined) nodo.textContent = testo;
+    return nodo;
+  }
+
+  function numero(valore, decimali) {
+    return valore.toLocaleString("it-IT", {
+      minimumFractionDigits: decimali || 0,
+      maximumFractionDigits: decimali || 0
+    });
+  }
+
+  // Le date nei dati sono UTC (2026-07-30T11:40Z): Safari non digerisce quel
+  // formato senza i secondi, quindi lo normalizziamo a mano.
+  function data(iso) {
+    if (!iso) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})Z$/.exec(iso);
+    if (!m) return new Date(iso);
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+  }
+
+  function ora(iso) {
+    var d = data(iso);
+    return d ? d.toLocaleTimeString("it-IT", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) : "—";
+  }
+
+  function giornoOra(iso) {
+    var d = data(iso);
+    if (!d) return "—";
+    return d.toLocaleDateString("it-IT", { timeZone: TZ, day: "numeric", month: "long" }) +
+      " alle " + ora(iso);
+  }
+
+  function oraItalianaDaUTC(hhmm) {
+    var oggi = new Date();
+    var d = new Date(Date.UTC(
+      oggi.getUTCFullYear(), oggi.getUTCMonth(), oggi.getUTCDate(),
+      parseInt(hhmm.slice(0, 2), 10), parseInt(hhmm.slice(3, 5), 10)
+    ));
+    return d.toLocaleTimeString("it-IT", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+  }
+
+  // "mercoledi 29 luglio": nel sottotitolo le date vanno per esteso, perche la
+  // pagina resta online e "ieri" non si sa piu a cosa si riferisca.
+  function giornoLungo(iso) {
+    var d = data(iso);
+    if (!d) return "—";
+    return d.toLocaleDateString("it-IT", {
+      timeZone: TZ, weekday: "long", day: "numeric", month: "long"
+    });
+  }
+
+  // Proiezione di Mercatore, sufficiente alla scala nazionale ----------------
+  // Il risultato e riportato in gradi per stare nella stessa unita della
+  // longitudine: altrimenti la mappa esce schiacciata.
+  function mercatore(lat) {
+    var r = lat * Math.PI / 180;
+    return Math.log(Math.tan(Math.PI / 4 + r / 2)) * 180 / Math.PI;
+  }
+
+  function costruisciProiezione(bbox, larghezza, margine) {
+    var x0 = bbox[0], y0 = mercatore(bbox[1]), x1 = bbox[2], y1 = mercatore(bbox[3]);
+    var dx = x1 - x0, dy = y1 - y0;
+    var utile = larghezza - margine * 2;
+    var scala = utile / dx;
+    var altezza = dy * scala + margine * 2;
+    return {
+      larghezza: larghezza,
+      altezza: altezza,
+      punto: function (lon, lat) {
+        return [
+          margine + (lon - x0) * scala,
+          margine + (y1 - mercatore(lat)) * scala
+        ];
+      }
+    };
+  }
+
+  function tracciato(poligoni, proiezione) {
+    var pezzi = [];
+    for (var p = 0; p < poligoni.length; p++) {
+      for (var a = 0; a < poligoni[p].length; a++) {
+        var anello = poligoni[p][a];
+        var d = "";
+        for (var i = 0; i < anello.length; i++) {
+          var xy = proiezione.punto(anello[i][0], anello[i][1]);
+          d += (i === 0 ? "M" : "L") + xy[0].toFixed(1) + " " + xy[1].toFixed(1);
+        }
+        pezzi.push(d + "Z");
+      }
+    }
+    return pezzi.join("");
+  }
+
+  function svgNodo(tag, attributi) {
+    var nodo = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var chiave in attributi) nodo.setAttribute(chiave, attributi[chiave]);
+    return nodo;
+  }
+
+  // Raggio proporzionale alla radice dell'intensita: l'area del cerchio
+  // cresce come il dato, che e il modo corretto di leggerlo a occhio.
+  function raggio(frp) {
+    return Math.max(2.6, Math.min(22, Math.sqrt(Math.max(frp, 0)) * 1.7));
+  }
+
+  // -----------------------------------------------------------------------
+  function disegnaCifre(dati) {
+    var t = dati.totali;
+    var voci = [
+      { valore: numero(t.focolai), voce: "focolai attivi", acceso: true },
+      { valore: numero(t.rilevamenti), voce: "rilevamenti satellitari" },
+      { valore: numero(dati.focolai.filter(function (f) { return f.notte; }).length), voce: "accesi di notte" },
+      { valore: numero(t.frp) + " MW", voce: "intensità totale" }
+    ];
+    var contenitore = document.getElementById("cifre");
+    contenitore.innerHTML = "";
+    voci.forEach(function (v) {
+      var box = elemento("div", "cifra");
+      box.appendChild(elemento("div", "valore" + (v.acceso ? " acceso" : ""), v.valore));
+      box.appendChild(elemento("div", "voce", v.voce));
+      contenitore.appendChild(box);
+    });
+  }
+
+  function disegnaSommario(dati) {
+    var t = dati.totali;
+    var testo = "I satelliti della Nasa hanno rilevato <b>" + numero(t.focolai) +
+      (t.focolai === 1 ? " focolaio" : " focolai") + "</b> sul territorio italiano tra le " +
+      ora(dati.finestra.inizio) + " di " + giornoLungo(dati.finestra.inizio) +
+      " e le " + ora(dati.finestra.fine) + " di " + giornoLungo(dati.finestra.fine);
+    if (dati.finestra.ultimo_rilevamento) {
+      testo += ". L'ultimo è stato avvistato alle <b>" +
+        ora(dati.finestra.ultimo_rilevamento) + "</b> di " +
+        giornoLungo(dati.finestra.ultimo_rilevamento);
+    }
+    testo += ".";
+    document.getElementById("sommario").innerHTML = testo;
+  }
+
+  function disegnaMappa(confini, dati) {
+    var box = document.getElementById("mappa-box");
+    var svg = document.getElementById("mappa");
+    var tip = document.getElementById("tip");
+    var larghezza = 600;
+    var proiezione = costruisciProiezione(confini.bbox, larghezza, 8);
+
+    svg.setAttribute("viewBox", "0 0 " + larghezza + " " + proiezione.altezza.toFixed(0));
+    svg.innerHTML = "";
+
+    var perRegione = {};
+    confini.features.forEach(function (f) {
+      var nodo = svgNodo("path", {
+        "class": "regione",
+        d: tracciato(f.geometry.coordinates, proiezione)
+      });
+      svg.appendChild(nodo);
+      perRegione[f.properties.nome] = nodo;
+    });
+
+    var gruppo = svgNodo("g", {});
+    svg.appendChild(gruppo);
+
+    // Dal piu grande al piu piccolo, cosi i focolai minori restano cliccabili.
+    dati.focolai.slice().sort(function (a, b) { return b.frp - a.frp; }).forEach(function (f) {
+      var xy = proiezione.punto(f.lon, f.lat);
+      var cerchio = svgNodo("circle", {
+        "class": "focolaio" + (f.notte ? " notte" : ""),
+        cx: xy[0].toFixed(1),
+        cy: xy[1].toFixed(1),
+        r: raggio(f.frp).toFixed(1)
+      });
+      cerchio.addEventListener("mouseenter", function () {
+        tip.innerHTML = "";
+        tip.appendChild(elemento("div", "luogo", f.regione));
+        tip.appendChild(elemento("div", "dato",
+          "intensità " + numero(f.frp, 1) + " MW · " +
+          f.rilevamenti + (f.rilevamenti === 1 ? " rilevamento" : " rilevamenti")));
+        tip.appendChild(elemento("div", "dato", "ultimo passaggio " + giornoOra(f.istante)));
+        if (f.notte) tip.appendChild(elemento("div", "dato", "ancora acceso di notte"));
+        tip.classList.add("on");
+
+        var scala = box.clientWidth / larghezza;
+        var sinistra = xy[0] * scala + 14;
+        if (sinistra + 230 > box.clientWidth) sinistra = xy[0] * scala - 244;
+        tip.style.left = Math.max(0, sinistra) + "px";
+        tip.style.top = (xy[1] * scala + 12) + "px";
+
+        if (perRegione[f.regione]) perRegione[f.regione].classList.add("evidenzia");
+      });
+      cerchio.addEventListener("mouseleave", function () {
+        tip.classList.remove("on");
+        if (perRegione[f.regione]) perRegione[f.regione].classList.remove("evidenzia");
+      });
+      gruppo.appendChild(cerchio);
+    });
+
+    disegnaMisure(dati);
+    return perRegione;
+  }
+
+  function disegnaMisure(dati) {
+    var massimo = dati.focolai.reduce(function (m, f) { return Math.max(m, f.frp); }, 0);
+    if (massimo <= 0) return;
+    var riferimenti = [1, 10, 50].filter(function (v) { return v <= Math.max(massimo, 1); });
+    if (riferimenti[riferimenti.length - 1] < massimo) riferimenti.push(Math.round(massimo));
+    var nodo = document.getElementById("misure");
+    nodo.innerHTML = "";
+    riferimenti.forEach(function (v) {
+      var d = raggio(v) * 2;
+      var pallino = elemento("i");
+      pallino.style.width = d.toFixed(0) + "px";
+      pallino.style.height = d.toFixed(0) + "px";
+      nodo.appendChild(pallino);
+    });
+    nodo.appendChild(elemento("span", null, "intensità da " + riferimenti[0] + " a " +
+      riferimenti[riferimenti.length - 1] + " MW"));
+  }
+
+  function disegnaClassifica(dati, perRegione) {
+    var contenitore = document.getElementById("classifica");
+    contenitore.innerHTML = "";
+    if (!dati.per_regione.length) {
+      contenitore.appendChild(elemento("p", "vuoto",
+        "Nessun focolaio rilevato in Italia nelle ultime 24 ore."));
+      return;
+    }
+    var massimo = dati.per_regione[0].frp || 1;
+    dati.per_regione.slice(0, 8).forEach(function (v) {
+      var riga = elemento("div", "riga");
+      riga.appendChild(elemento("div", "nome", v.regione));
+
+      var num = elemento("div", "num");
+      num.innerHTML = "<b>" + numero(v.frp, 1) + " MW</b> · " + v.focolai +
+        (v.focolai === 1 ? " focolaio" : " focolai") +
+        (v.notturni ? " · " + v.notturni + " di notte" : "");
+      riga.appendChild(num);
+
+      var barra = elemento("div", "barra");
+      var riempimento = elemento("i");
+      riempimento.style.width = Math.max(2, (v.frp / massimo) * 100) + "%";
+      barra.appendChild(riempimento);
+      riga.appendChild(barra);
+
+      riga.addEventListener("mouseenter", function () {
+        if (perRegione[v.regione]) perRegione[v.regione].classList.add("evidenzia");
+      });
+      riga.addEventListener("mouseleave", function () {
+        if (perRegione[v.regione]) perRegione[v.regione].classList.remove("evidenzia");
+      });
+      contenitore.appendChild(riga);
+    });
+  }
+
+  function disegnaStorico(storico) {
+    var giorni = (storico && storico.giorni) || [];
+    if (giorni.length < 2) return;
+    giorni = giorni.slice(-30);
+    var massimo = giorni.reduce(function (m, g) { return Math.max(m, g.focolai); }, 1);
+    var colonne = document.getElementById("colonne");
+    colonne.innerHTML = "";
+    giorni.forEach(function (g, i) {
+      var col = elemento("div", "col" + (i === giorni.length - 1 ? " oggi" : ""));
+      col.style.height = Math.max(4, (g.focolai / massimo) * 100) + "%";
+      col.title = g.giorno + ": " + g.focolai + " focolai";
+      colonne.appendChild(col);
+    });
+    var asse = document.getElementById("assex");
+    asse.innerHTML = "";
+    var primo = new Date(giorni[0].giorno + "T12:00:00Z");
+    var ultimo = new Date(giorni[giorni.length - 1].giorno + "T12:00:00Z");
+    var formato = { day: "numeric", month: "short" };
+    asse.appendChild(elemento("span", null, primo.toLocaleDateString("it-IT", formato)));
+    asse.appendChild(elemento("span", null, "massimo " + massimo + " focolai"));
+    asse.appendChild(elemento("span", null, ultimo.toLocaleDateString("it-IT", formato)));
+    document.getElementById("storico").hidden = false;
+  }
+
+  function disegnaPiede(dati) {
+    var piede = document.getElementById("piede");
+    piede.innerHTML = "";
+
+    var metodo = elemento("p");
+    metodo.innerHTML = "<b>Come si legge.</b> Ogni cerchio è un focolaio: i pixel accesi " +
+      "vicini fra loro vengono uniti, perché un singolo incendio ne illumina più di uno. " +
+      "Le regioni sono ordinate per intensità del fuoco e non per numero di focolai. " +
+      "I rilevamenti includono i roghi agricoli, frequenti in pianura d'estate dopo la " +
+      "trebbiatura: un fuoco ancora acceso di notte è quasi sempre un incendio fuori " +
+      "controllo, uno diurno e isolato molto spesso una bruciatura di stoppie.";
+    piede.appendChild(metodo);
+
+    var unita = elemento("p");
+    unita.innerHTML = "<b>Perché i megawatt.</b> Dallo spazio non si misurano gli ettari " +
+      "bruciati: quelli si contano dopo, sul terreno. Quello che il satellite misura è il " +
+      "calore, cioè la potenza con cui il fuoco irradia energia nell'istante in cui viene " +
+      "sorvolato, espressa in megawatt (FRP, <i>fire radiative power</i>). È una grandezza " +
+      "che cresce con la quantità di vegetazione che sta bruciando in quel momento, ed è " +
+      "quindi l'unico modo di distinguere in tempo reale un fuocherello da un fronte: una " +
+      "bruciatura agricola resta in genere sotto i dieci megawatt, un incendio che richiede " +
+      "i mezzi aerei ne fa decine. Il totale in cima alla pagina è la somma dei valori " +
+      "rilevati a ogni passaggio: serve a confrontare fra loro giorni e regioni, non è " +
+      "un'energia complessiva.";
+    piede.appendChild(unita);
+
+    var quando = elemento("p");
+    quando.innerHTML = "<b>Quando si aggiorna la mappa.</b> Due volte al giorno, alle " +
+      oraItalianaDaUTC(AGGIORNAMENTI_UTC[0]) + " e alle " +
+      oraItalianaDaUTC(AGGIORNAMENTI_UTC[1]) + ", e ogni volta il conteggio copre le " +
+      "24 ore precedenti. I due orari non sono casuali: i satelliti sorvolano l'Italia in " +
+      "due fasce, nel cuore della notte e intorno a mezzogiorno, e l'aggiornamento cade " +
+      "nelle ore in cui non ne passa nessuno, così che un ritardo di pochi minuti non " +
+      "faccia entrare o uscire un intero sorvolo dal conteggio. I dati arrivano comunque " +
+      "con due o tre ore di ritardo rispetto al passaggio del satellite: un incendio " +
+      "scoppiato un'ora fa non può ancora essere in mappa, e l'aggiornamento del " +
+      "pomeriggio può non contenere il sorvolo più recente.";
+    piede.appendChild(quando);
+
+    var esclusi = elemento("p");
+    var quanti = dati.totali.esclusi_punti_caldi || 0;
+    esclusi.innerHTML = "<b>Cosa non è conteggiato.</b> " +
+      "I satelliti non distinguono un incendio da un altoforno: " + numero(quanti) +
+      (quanti === 1 ? " rilevamento è stato escluso" : " rilevamenti sono stati esclusi") +
+      " perché ricadono su punti caldi permanenti, cioè acciaierie, raffinerie, cementifici e " +
+      "vulcani individuati automaticamente perché si accendono sempre nelle stesse coordinate. " +
+      "Esclusi anche " + numero(dati.totali.esclusi_bassa_confidenza || 0) +
+      " rilevamenti a bassa attendibilità.";
+    piede.appendChild(esclusi);
+
+    var fonte = elemento("p");
+    var testoFonte = "<b>Fonte.</b> " + dati.fonte +
+      ", sensori VIIRS (risoluzione 375 metri) e MODIS (1 chilometro). " +
+      "Confini amministrativi ISTAT. Ultimo aggiornamento " +
+      giornoOra(dati.generato) + ".";
+    if (dati.sorgenti_non_raggiunte && dati.sorgenti_non_raggiunte.length) {
+      testoFonte += " Attenzione: in questo aggiornamento non è stato possibile " +
+        "raggiungere " + dati.sorgenti_non_raggiunte.join(", ") + ".";
+    }
+    testoFonte += " Infografica realizzata da <b>Riccardo Saporiti</b> con Claude Opus 5.";
+    fonte.innerHTML = testoFonte;
+    piede.appendChild(fonte);
+  }
+
+  function avvisaAltezza() {
+    if (window.parent === window) return;
+    var invia = function () {
+      window.parent.postMessage({
+        tipo: "incendi-italia-altezza",
+        altezza: document.documentElement.scrollHeight
+      }, "*");
+    };
+    invia();
+    window.addEventListener("resize", invia);
+    if (window.ResizeObserver) new ResizeObserver(invia).observe(document.body);
+  }
+
+  function errore(messaggio) {
+    document.getElementById("sommario").textContent = messaggio;
+  }
+
+  function carica(percorso) {
+    return fetch(percorso, { cache: "no-cache" }).then(function (r) {
+      if (!r.ok) throw new Error(percorso + ": " + r.status);
+      return r.json();
+    });
+  }
+
+  Promise.all([
+    carica("regioni.json"),
+    carica("latest.json"),
+    carica("storico.json").catch(function () { return { giorni: [] }; })
+  ]).then(function (risposte) {
+    var confini = risposte[0], dati = risposte[1], storico = risposte[2];
+    disegnaSommario(dati);
+    disegnaCifre(dati);
+    var perRegione = disegnaMappa(confini, dati);
+    disegnaClassifica(dati, perRegione);
+    disegnaStorico(storico);
+    disegnaPiede(dati);
+    avvisaAltezza();
+  }).catch(function (e) {
+    errore("Non è stato possibile caricare i dati satellitari. Riprova più tardi.");
+    if (window.console) console.error(e);
+  });
+})();
+</script>
+</body>
+</html>
