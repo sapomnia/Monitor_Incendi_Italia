@@ -328,7 +328,10 @@
   function disegnaCifre(dati) {
     var t = dati.totali;
     var voci = [
-      { valore: numero(t.focolai), voce: "focolai attivi", acceso: true },
+      // "rilevati", non "attivi": il satellite vede il fuoco quando passa, non
+      // osserva mai lo spegnimento. Un focolaio in mappa puo essere spento da
+      // ore senza che nessun dato lo dica.
+      { valore: numero(t.focolai), voce: "focolai rilevati", acceso: true },
       { valore: numero(t.rilevamenti), voce: "rilevamenti satellitari" },
       { valore: numero(dati.focolai.filter(function (f) { return f.notte; }).length), voce: "accesi di notte" },
       { valore: numero(t.frp) + " MW", voce: "intensità totale" }
