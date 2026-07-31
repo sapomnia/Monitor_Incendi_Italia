@@ -15,6 +15,7 @@ Solo libreria standard: nessuna dipendenza da installare.
 """
 
 import csv
+import glob
 import io
 import json
 import math
@@ -376,27 +377,113 @@ def raggruppa(punti):
 # Storico
 # --------------------------------------------------------------------------
 
-def aggiorna_storico(giorno, rilevamenti, focolai):
-    """Tiene una riga al giorno, sovrascrivendo quella odierna se rigiriamo lo script.
+def unisci_intervalli(intervalli):
+    """Fonde gli intervalli temporali che si sovrappongono."""
+    if not intervalli:
+        return []
+    ordinati = sorted(intervalli)
+    uniti = [list(ordinati[0])]
+    for inizio, fine in ordinati[1:]:
+        if inizio <= uniti[-1][1]:
+            uniti[-1][1] = max(uniti[-1][1], fine)
+        else:
+            uniti.append([inizio, fine])
+    return uniti
 
-    La riga porta la data dell'esecuzione, non quella dei singoli rilevamenti:
-    e il conteggio delle 24 ore che si chiudono in quel momento. Perche i giorni
-    restino confrontabili deve scriverla sempre la stessa esecuzione, quella del
-    mattino: vedi la variabile d'ambiente AGGIORNA_STORICO.
+
+def ricostruisci_storico():
+    """Ricalcola la serie giornaliera dall'archivio, per giorno di calendario.
+
+    Non dipende piu da quando gira il cron: il conteggio del 30 luglio resta il
+    conteggio del 30 luglio, chiunque lo calcoli e a qualunque ora. Un giro in
+    ritardo o saltato non lascia buchi, perche il giro successivo ricostruisce
+    tutto da capo dai rilevamenti archiviati.
+
+    I giorni sono in ora UTC. Lo scarto con il calendario italiano e di una o
+    due ore e cade in piena notte, quando i satelliti non sorvolano l'Italia:
+    non sposta i conteggi.
     """
-    storico = []
-    if os.path.exists(HISTORY):
+    file_archivio = sorted(glob.glob(os.path.join(ARCHIVE_DIR, "*.json")))
+    if not file_archivio:
+        return []
+
+    # Le finestre dei vari giri si sovrappongono: teniamo ogni rilevamento una
+    # volta sola. Coordinate, istante e sensore identificano l'osservazione.
+    osservazioni = {}
+    coperture = []
+
+    for percorso in file_archivio:
         try:
-            with open(HISTORY, encoding="utf-8") as handle:
-                storico = json.load(handle).get("giorni", [])
+            with open(percorso, encoding="utf-8") as handle:
+                dati = json.load(handle)
         except (ValueError, OSError):
-            print("  ATTENZIONE: storico illeggibile, lo ricreo", file=sys.stderr)
+            print("  ATTENZIONE: archivio illeggibile, lo salto: %s"
+                  % os.path.basename(percorso), file=sys.stderr)
+            continue
 
-    storico = [g for g in storico if g["giorno"] != giorno]
-    storico.append({"giorno": giorno, "rilevamenti": rilevamenti, "focolai": focolai})
-    storico.sort(key=lambda g: g["giorno"])
+        finestra = dati.get("finestra") or {}
+        if finestra.get("inizio") and finestra.get("fine"):
+            try:
+                coperture.append((
+                    datetime.strptime(finestra["inizio"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc),
+                    datetime.strptime(finestra["fine"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc),
+                ))
+            except ValueError:
+                pass
+
+        for voce in dati.get("rilevamenti", []):
+            # Stesse regole del conteggio pubblico: niente bassa attendibilita,
+            # niente acciaierie e vulcani.
+            if voce.get("confidenza") not in CONFIDENZE_PUBBLICATE:
+                continue
+            if voce.get("punto_caldo_permanente"):
+                continue
+            chiave = (voce["lat"], voce["lon"], voce["istante"], voce["sorgente"])
+            osservazioni[chiave] = voce
+
+    if not osservazioni:
+        return []
+
+    coperture = unisci_intervalli(coperture)
+
+    def giorno_completo(giorno):
+        """Vero se l'archivio copre le 24 ore piene di quel giorno."""
+        inizio = datetime.strptime(giorno, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        fine = inizio + timedelta(days=1)
+        return any(a <= inizio and fine <= b for a, b in coperture)
+
+    per_giorno = defaultdict(list)
+    for voce in osservazioni.values():
+        try:
+            istante = datetime.strptime(voce["istante"], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        per_giorno[voce["istante"][:10]].append({
+            "lat": voce["lat"],
+            "lon": voce["lon"],
+            "frp": voce.get("frp", 0.0),
+            "istante": istante,
+            "confidenza": voce["confidenza"],
+            "giorno_notte": voce.get("giorno_notte", ""),
+            "sorgente": voce["sorgente"],
+            "regione": voce.get("regione", ""),
+        })
+
+    storico = []
+    for giorno in sorted(per_giorno):
+        # Il giorno in corso, e quelli non ancora coperti per intero, restano
+        # fuori: un conteggio parziale in fondo al grafico sembrerebbe un crollo.
+        if not giorno_completo(giorno):
+            continue
+        punti = per_giorno[giorno]
+        storico.append({
+            "giorno": giorno,
+            "rilevamenti": len(punti),
+            "focolai": len(raggruppa(punti)),
+            "frp": round(sum(p["frp"] for p in punti), 1),
+        })
+
     storico = storico[-GIORNI_STORICO:]
-
     with open(HISTORY, "w", encoding="utf-8") as handle:
         json.dump({"giorni": storico}, handle, ensure_ascii=False, separators=(",", ":"))
     return storico
@@ -576,21 +663,19 @@ def main():
             separators=(",", ":"),
         )
 
-    # Il secondo aggiornamento del pomeriggio rinfresca la mappa ma non tocca lo
-    # storico: la serie giornaliera deve venire sempre dalla stessa esecuzione,
-    # altrimenti il valore del giorno dipende da chi ha girato per ultimo.
-    if os.environ.get("AGGIORNA_STORICO", "1").strip() == "0":
-        storico = None
-    else:
-        storico = aggiorna_storico(giorno, len(pubblicabili), len(focolai))
+    # La serie giornaliera viene ricostruita da zero dall'archivio a ogni giro:
+    # e indipendente dall'orario di esecuzione, quindi non risente dei ritardi
+    # ne delle esecuzioni saltate dallo scheduler di GitHub.
+    storico = ricostruisci_storico()
 
     print()
     print("Scritto: %s (%.0f KB)" % (os.path.relpath(LATEST, ROOT), os.path.getsize(LATEST) / 1024))
     print("Scritto: %s" % os.path.relpath(archivio, ROOT))
-    if storico is None:
-        print("Storico: non aggiornato (AGGIORNA_STORICO=0)")
+    if storico:
+        print("Storico: %d giorni completi (%s -> %s)"
+              % (len(storico), storico[0]["giorno"], storico[-1]["giorno"]))
     else:
-        print("Storico: %d giorni" % len(storico))
+        print("Storico: nessun giorno ancora coperto per intero dall'archivio")
     if esclusi_permanenti:
         print()
         print("Esclusi %d rilevamenti su punti caldi permanenti:" % len(esclusi_permanenti))

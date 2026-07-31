@@ -12,24 +12,22 @@ on:
     # inoltre quasi quattro ore di margine sul ritardo dei dati near real-time,
     # che e di circa tre ore dal passaggio.
     #
-    # IMPORTANTE: l'orario deve restare fisso. Spostarlo sposta il taglio e
-    # rende i giorni dello storico non piu confrontabili fra loro.
+    # Lo scheduler di GitHub e "best effort": ritarda e ogni tanto salta del
+    # tutto un'esecuzione. Non e un problema per la serie storica, che viene
+    # ricalcolata dall'archivio per giorno di calendario, ma lo e per la
+    # freschezza della mappa: se un giro salta, la pagina lo dichiara da sola
+    # al lettore.
     - cron: "45 6 * * *"
 
     # 15:15 UTC, le 17:15 italiane d'estate: secondo giro per far vedere il
     # pomeriggio in corso, che d'estate e il momento in cui gli incendi
     # scoppiano. Cade anch'esso in un'ora senza sorvoli (le 15, 16 e 17 UTC
-    # sono vuote). Non scrive lo storico: vedi AGGIORNA_STORICO piu sotto.
+    # sono vuote), e raddoppia le probabilita che almeno un giro al giorno
+    # vada a buon fine.
     - cron: "15 15 * * *"
+  # Un avvio a mano e sempre sicuro: la serie storica viene ricostruita
+  # dall'archivio per giorno di calendario, quindi non dipende da quando gira.
   workflow_dispatch:
-    inputs:
-      aggiorna_storico:
-        description: >-
-          Riscrivi anche la riga dello storico di oggi. Lascia disattivato per
-          il semplice rinfresco della mappa: attivalo solo se stai rifacendo il
-          giro del mattino, per esempio perche era fallito.
-        type: boolean
-        default: false
 
 # Se un'esecuzione e ancora in corso, quella nuova aspetta: due processi che
 # scrivono gli stessi file finirebbero per litigare sul commit.
@@ -53,17 +51,6 @@ jobs:
           # Facoltativo. Se il secret non esiste la variabile resta vuota e gli
           # script usano i feed pubblici, che non richiedono chiave.
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
-          # La serie giornaliera la scrive solo il giro delle 06:45, cosi il
-          # valore di ogni giorno e sempre misurato alla stessa ora.
-          #
-          # Il confronto e in positivo, non in negativo: qualunque avvio che non
-          # sia quello del mattino lascia in pace lo storico. Un avvio manuale
-          # lo tocca solo se spunti la casella, altrimenti bastava un test nel
-          # pomeriggio per sovrascrivere il dato del giorno con numeri misurati
-          # a un'ora diversa.
-          AGGIORNA_STORICO: >-
-            ${{ (github.event.schedule == '45 6 * * *' || inputs.aggiorna_storico)
-                && '1' || '0' }}
         run: python3 scripts/fetch_fires.py
 
       - name: Pubblica i dati aggiornati

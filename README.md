@@ -39,18 +39,9 @@ git init && git add . && git commit -m "Prima versione" && git branch -M main
 Da lì in avanti va da sé: due aggiornamenti al giorno, alle **06:45** e alle
 **15:15 UTC**, e maschera dei punti caldi ogni lunedì.
 
-Il giro del mattino è quello canonico e scrive la riga dello storico giornaliero.
-Quello del pomeriggio serve a mostrare gli incendi in corso e aggiorna solo la
-mappa, altrimenti il valore di ogni giorno dipenderebbe da quale esecuzione ha
-girato per ultima.
-
-Il workflow decide guardando **quale** cron l'ha avviato, e solo quello delle
-06:45 abilita la scrittura. Un avvio manuale da GitHub non tocca lo storico se
-non spunti la casella `aggiorna_storico`, che parte disattivata: serve a rifare
-il giro del mattino quando è fallito, non a testare nel pomeriggio. Da riga di
-comando invece la riga viene scritta, perché è quello che ti aspetti quando
-lanci lo script tu; per evitarlo basta `AGGIORNA_STORICO=0 python3
-scripts/fetch_fires.py`.
+Il giro del mattino copre la notte appena passata, quello del pomeriggio mostra
+gli incendi in corso. Nessuno dei due è più importante dell'altro: qualunque
+esecuzione, anche manuale, produce lo stesso risultato.
 
 Se cambi gli orari del cron, aggiorna anche la costante `AGGIORNAMENTI_UTC` in
 `docs/index.html`: è quella che genera la frase "si aggiorna alle 08:45 e alle
@@ -110,6 +101,22 @@ vengono uniti in un focolaio, con l'FRP sommato.
 **Esclusi i rilevamenti a bassa attendibilità**, in larga parte falsi positivi.
 Restano tutti nell'archivio giornaliero, che conserva il dato grezzo integrale.
 
+**La serie storica si ricostruisce dall'archivio, non si accumula.** A ogni giro
+`fetch_fires.py` rilegge tutti i file di `data/archive/`, elimina i doppioni
+dovuti alle finestre sovrapposte e ricalcola il conteggio di ogni giorno di
+calendario. Il conteggio del 30 luglio resta quindi il conteggio del 30 luglio,
+chiunque lo esegua e a qualunque ora: lo scheduler di GitHub può ritardare o
+saltare un'esecuzione senza lasciare buchi, perché il giro successivo rifà tutto
+da capo. Entrano solo i giorni che l'archivio copre per intero — il giorno in
+corso resta fuori, perché un conteggio parziale in fondo al grafico sembrerebbe
+un crollo. I giorni sono in ora UTC: lo scarto con il calendario italiano è di
+una o due ore e cade in piena notte, quando i satelliti non sorvolano l'Italia.
+
+**Se i dati sono fermi, la pagina lo dice.** Oltre le 18 ore dall'ultimo
+aggiornamento riuscito compare un avviso in cima. La soglia è appena sopra le 15
+ore e mezza che separano il giro delle 15:15 da quello delle 06:45, così scatta
+solo quando è successo qualcosa davvero.
+
 **Ogni download viene ritentato tre volte** con attesa crescente, rispettando
 l'eventuale `Retry-After` del server. I 502 e 503 passeggeri della NASA
 altrimenti farebbero saltare un sensore per l'intera giornata. Sugli errori
@@ -120,13 +127,25 @@ all'ultimo dato buono invece di azzerarsi.
 
 ## Limiti da conoscere
 
-- **La finestra di 24 ore è mobile**, quindi l'orario del cron va lasciato
-  fisso: spostarlo cambia dove cade il taglio e rende i giorni dello storico non
-  più confrontabili. Un anticipo di venti minuti può escludere un intero
-  passaggio satellitare del giorno prima. I satelliti sorvolano l'Italia in due
-  finestre, 00:00-03:00 e 10:00-14:00 UTC; nelle ore 05, 06, 15, 16, 17, 21 e 22
-  non passa nessuno, e sono quelle in cui conviene tagliare. Entrambi gli orari
-  scelti cadono in uno di quei buchi.
+- **Lo scheduler di GitHub non è puntuale, e ogni tanto salta.** Osservato di
+  persona: il giro delle 15:15 del 30 luglio è partito alle 16:45, e quello
+  delle 06:45 del 31 luglio non è mai partito, lasciando la pagina ferma per
+  sedici ore. I workflow risultavano attivi e senza errori: è la schedulazione a
+  essere "best effort". La serie storica è immune perché si ricostruisce
+  dall'archivio, la freschezza della mappa no — per quella c'è l'avviso in
+  pagina. Se succede spesso, l'unico rimedio vero è un secondo esecutore che
+  chiami il repository dall'esterno.
+- **La finestra di 24 ore della mappa è mobile.** Gli orari del cron cadono
+  apposta nelle ore senza sorvoli: i satelliti passano fra le 00:00 e le 03:00 e
+  fra le 10:00 e le 14:00 UTC, mentre alle 05, 06, 15, 16, 17, 21 e 22 non passa
+  nessuno. Tagliare lì evita che un ritardo faccia entrare o uscire un intero
+  passaggio dal conteggio mostrato in mappa. I giorni dello storico invece non
+  ne risentono più, da quando si calcolano per giorno di calendario.
+- **Un focolaio resta in mappa un po' più di 24 ore**, perché sparisce solo al
+  primo aggiornamento che non lo comprende più: in pratica fra le 25 e le 30 ore
+  a seconda di quando è stato rilevato. Il satellite non osserva mai lo
+  spegnimento, quindi un punto in mappa può essere spento da un pezzo: per
+  questo la cifra in cima dice "focolai rilevati" e non "attivi".
 - **Il giro delle 15:15 UTC può tagliare la coda del sorvolo di mezzogiorno.**
   Il picco dei passaggi è alle 12:00 UTC ma la fascia si chiude verso le 14:00, e
   con due o tre ore di ritardo quei rilevamenti non sono ancora pubblicati alle

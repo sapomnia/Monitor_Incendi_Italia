@@ -43,6 +43,21 @@
   .sommario { color: var(--tenue); font-size: 15px; margin: 0 0 24px; max-width: 62ch; }
   .sommario b { color: var(--testo); font-weight: 600; }
 
+  /* Avviso di dati fermi: compare solo quando l'aggiornamento e saltato. */
+  .avviso {
+    display: none;
+    background: #2a1409;
+    border: 1px solid var(--fuoco);
+    border-left-width: 4px;
+    border-radius: 3px;
+    padding: 10px 13px;
+    margin: 0 0 20px;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .avviso.visibile { display: block; }
+  .avviso b { color: var(--fuoco); }
+
   /* Numeroni ----------------------------------------------------------- */
   .cifre {
     display: grid;
@@ -173,6 +188,8 @@
   <h1>Gli incendi in Italia nelle ultime 24 ore</h1>
   <p class="sommario" id="sommario">Caricamento dei dati satellitari…</p>
 
+  <div class="avviso" id="avviso" role="status"></div>
+
   <div class="cifre" id="cifre"></div>
 
   <div class="corpo">
@@ -215,6 +232,10 @@
   // caricamento invece di scriverli a mano, cosi il testo resta corretto anche
   // quando scatta l'ora legale.
   var AGGIORNAMENTI_UTC = ["06:45", "15:15"];
+
+  // Fra il giro delle 15:15 e quello delle 06:45 passano 15 ore e mezza: solo
+  // oltre le 18 ore c'e stato davvero un problema, e vale la pena dirlo.
+  var ORE_PRIMA_DELL_AVVISO = 18;
 
   function elemento(tag, classe, testo) {
     var nodo = document.createElement(tag);
@@ -359,6 +380,25 @@
     }
     testo += ".";
     document.getElementById("sommario").innerHTML = testo;
+  }
+
+  function disegnaAvviso(dati) {
+    var generato = data(dati.generato);
+    if (!generato) return;
+    var ore = (Date.now() - generato.getTime()) / 3600000;
+    if (ore < ORE_PRIMA_DELL_AVVISO) return;
+
+    // Meglio dirlo al lettore che lasciargli credere che l'Italia stia
+    // bruciando come ieri pomeriggio: gli aggiornamenti automatici ogni tanto
+    // saltano, e senza avviso la mappa vecchia sembra la mappa di adesso.
+    var quante = ore < 48
+      ? Math.round(ore) + " ore"
+      : Math.round(ore / 24) + " giorni";
+    var avviso = document.getElementById("avviso");
+    avviso.innerHTML = "<b>Attenzione: questi dati non sono aggiornati.</b> " +
+      "L'ultimo aggiornamento riuscito risale a " + giornoOra(dati.generato) +
+      ", cioè " + quante + " fa. Quella che vedi non è la situazione di adesso.";
+    avviso.classList.add("visibile");
   }
 
   function disegnaMappa(confini, dati) {
@@ -595,6 +635,7 @@
   ]).then(function (risposte) {
     var confini = risposte[0], dati = risposte[1], storico = risposte[2];
     disegnaSommario(dati);
+    disegnaAvviso(dati);
     disegnaCifre(dati);
     var perRegione = disegnaMappa(confini, dati);
     disegnaClassifica(dati, perRegione);
