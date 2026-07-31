@@ -1,0 +1,67 @@
+name: Sorveglia la freschezza dei dati
+
+# Rete di sicurezza contro il guasto silenzioso: quando lo scheduler di GitHub
+# salta un'esecuzione non fallisce niente, quindi non arriva nessuna mail e la
+# pagina resta ferma. Questo workflow se ne accorge, prova a rimediare da solo
+# e avvisa solo se non ci riesce.
+#
+# E anche lui un cron e puo saltare a sua volta: e improbabile pero che saltino
+# lo stesso giorno due schedulazioni indipendenti.
+
+on:
+  schedule:
+    # 10:00 UTC: se il giro delle 06:45 e saltato, il dato piu recente e quello
+    # delle 15:15 di ieri e ha superato le 18 ore. E il caso che ci interessa.
+    - cron: "0 10 * * *"
+    # 22:00 UTC: intercetta la giornata in cui sono saltati entrambi i giri.
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+# Stesso gruppo del workflow principale: se sta gia girando quello, aspettiamo
+# invece di scrivere gli stessi file in contemporanea.
+concurrency:
+  group: aggiorna-dati
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sorveglia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Da quanto non si aggiorna?
+        id: controllo
+        run: python3 scripts/controlla_freschezza.py
+
+      # Il recupero e sicuro proprio perche la serie storica si ricostruisce
+      # dall'archivio per giorno di calendario: un giro in piu, a un'ora
+      # qualunque, non altera nessun numero.
+      - name: Provo a rimediare
+        if: steps.controllo.outputs.stantio == 'true'
+        env:
+          FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+        run: python3 scripts/fetch_fires.py
+
+      - name: Pubblica il recupero
+        if: steps.controllo.outputs.stantio == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/latest.json docs/storico.json data/archive
+          if git diff --staged --quiet; then
+            echo "Nessuna variazione: non committo."
+            exit 0
+          fi
+          git commit -m "Recupero automatico dei dati al $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      # Se dopo il tentativo i dati sono ancora vecchi, il problema non e lo
+      # scheduler: e la NASA che non risponde, o qualcosa di rotto. Qui il
+      # fallimento e voluto, perche e l'unico modo di far partire la mail.
+      - name: Verifica finale, fallisce apposta se il problema resta
+        if: steps.controllo.outputs.stantio == 'true'
+        run: python3 scripts/controlla_freschezza.py --esci-male

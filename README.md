@@ -14,6 +14,7 @@ Python, la pagina non carica librerie esterne. Costo di esercizio: zero.
 | `scripts/build_hotspot_mask.py` | Individua i punti caldi permanenti (acciaierie, vulcani). Settimanale. |
 | `scripts/fetch_fires.py` | Scarica i rilevamenti, li ritaglia sull'Italia e ricalcola la pagina. Giornaliero. |
 | `scripts/rete.py` | Scaricamento HTTP con tre tentativi e attesa crescente, usato da tutti. |
+| `scripts/controlla_freschezza.py` | Verifica da quanto non riesce un aggiornamento. Due volte al giorno. |
 | `scripts/serve.mjs` | Server statico per l'anteprima locale. |
 | `docs/` | Il sito pubblicato: pagina, confini, dati. |
 | `data/archive/` | Un file per giorno con tutti i rilevamenti grezzi, per le analisi future. |
@@ -116,6 +117,17 @@ una o due ore e cade in piena notte, quando i satelliti non sorvolano l'Italia.
 aggiornamento riuscito compare un avviso in cima. La soglia è appena sopra le 15
 ore e mezza che separano il giro delle 15:15 da quello delle 06:45, così scatta
 solo quando è successo qualcosa davvero.
+
+**E c'è una rete di sicurezza contro il guasto silenzioso.** Quando lo scheduler
+salta un'esecuzione non fallisce niente, quindi GitHub non manda nessuna mail:
+il guasto peggiore è quello che non si annuncia. Il workflow di sorveglianza
+gira alle 10:00 e alle 22:00 UTC, controlla l'età dell'ultimo aggiornamento e,
+se ha superato le 18 ore, **prova prima a rimediare da solo** rilanciando la
+raccolta. Solo se dopo il tentativo i dati sono ancora fermi — perché i feed
+della NASA non rispondono, non perché GitHub ha saltato un giro — fallisce
+apposta, e un'esecuzione fallita la mail la manda. Il recupero è innocuo proprio
+perché la serie storica si ricostruisce dall'archivio: un giro in più, a
+un'ora qualunque, non altera nessun numero.
 
 **Ogni download viene ritentato tre volte** con attesa crescente, rispettando
 l'eventuale `Retry-After` del server. I 502 e 503 passeggeri della NASA
