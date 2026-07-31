@@ -63,7 +63,7 @@ giusta anche con l'ora legale.
 node scripts/serve.mjs
 ```
 
-## Embed su Fanpage
+## Embed
 
 ```html
 <iframe src="https://TUO-UTENTE.github.io/IncendiFanPage/"
