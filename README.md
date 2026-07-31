@@ -105,10 +105,21 @@ incendi, stanno fermi — con due raggi per ciascuno:
   incendi veri nemmeno quando il vulcano è tranquillo. Le pinete di Linguaglossa,
   Milo e Zafferana restano fuori dalla zona esclusa.
 - **raggio esterno**, fino a 15 km: la fascia ambigua, dove una colata e un
-  incendio boschivo si assomigliano. Lì i focolai **restano nei conteggi** ma
-  finiscono nel campo `da_verificare` di `docs/latest.json`, e lo script li
-  stampa a video. La verifica sul bollettino INGV la fa una persona, non uno
-  script.
+  incendio boschivo si assomigliano. Lì i focolai **restano in mappa e nei
+  conteggi**, ma sotto la mappa compare un avviso che nomina il vulcano, dà la
+  distanza massima dal cratere e rimanda ai comunicati dell'INGV. Finiscono
+  anche nel campo `da_verificare` di `docs/latest.json` e nel log dello script.
+
+Il controllo automatico sui bollettini INGV è stato valutato e scartato. La
+tabella dei [comunicati dell'Osservatorio
+Etneo](https://www.ct.ingv.it/sezioniesterne/Comunicati/ComunicatiVulcanici.php?I=0)
+sarebbe parsabile e i tipi di comunicato formano una macchina a stati leggibile
+("primo comunicato" e "generico" indicano attività, "rientro dei parametri" e
+"fine fenomeno" la sua fine), ma nascondere in automatico i focolai durante
+un'eruzione avrebbe cancellato per settimane gli incendi boschivi veri sulle
+pendici dell'Etna. E la fonte copre solo le aree siciliane: Vesuvio e Campi
+Flegrei stanno sotto un altro osservatorio. Meglio avvisare il lettore e
+lasciare la verifica a una persona.
 
 I focolai vulcanici **non compaiono in mappa**: se non entrano nei conteggi, un
 segno in più costringe il lettore a chiedersi cosa sia, senza dargli niente in

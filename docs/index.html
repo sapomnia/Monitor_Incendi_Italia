@@ -57,6 +57,8 @@
   }
   .avviso.visibile { display: block; }
   .avviso b { color: var(--fuoco); }
+  .avviso a { color: var(--testo); }
+  #avviso-vulcani { margin: 14px 0 0; }
 
   /* Numeroni ----------------------------------------------------------- */
   .cifre {
@@ -204,6 +206,8 @@
         <span><i class="pallino notte"></i> ancora acceso di notte</span>
         <span class="misure" id="misure"></span>
       </div>
+
+      <div class="avviso" id="avviso-vulcani" role="status"></div>
     </div>
 
     <div>
@@ -398,6 +402,35 @@
     avviso.innerHTML = "<b>Attenzione: questi dati non sono aggiornati.</b> " +
       "L'ultimo aggiornamento riuscito risale a " + giornoOra(dati.generato) +
       ", cioè " + quante + " fa. Quella che vedi non è la situazione di adesso.";
+    avviso.classList.add("visibile");
+  }
+
+  // I focolai nella fascia esterna di un vulcano restano in mappa e nei
+  // conteggi: a quella distanza una colata e un incendio boschivo non si
+  // distinguono dal satellite. Il lettore pero deve saperlo, e la verifica sui
+  // bollettini INGV la fa una persona.
+  function disegnaAvvisoVulcani(dati) {
+    var dubbi = dati.da_verificare || [];
+    if (!dubbi.length) return;
+
+    var nomi = [];
+    dubbi.forEach(function (d) {
+      if (d.vulcano && nomi.indexOf(d.vulcano) === -1) nomi.push(d.vulcano);
+    });
+    var distanza = Math.max.apply(null, dubbi.map(function (d) { return d.distanza_km; }));
+
+    var testo = "<b>Attenzione.</b> " + (dubbi.length === 1
+      ? "Un focolaio in mappa si trova"
+      : numero(dubbi.length) + " focolai in mappa si trovano") +
+      " a ridosso " + (nomi.length === 1 ? "del vulcano " : "dei vulcani ") +
+      nomi.join(" e ") + ", fino a " + numero(distanza, 1) + " km dal cratere: " +
+      (dubbi.length === 1 ? "potrebbe non essere un incendio" : "potrebbero non essere incendi") +
+      " ma calore legato a un'eventuale eruzione in corso. La verifica va fatta sui " +
+      "<a href=\"https://www.ct.ingv.it/sezioniesterne/Comunicati/ComunicatiVulcanici.php?I=0\" " +
+      "target=\"_blank\" rel=\"noopener\">comunicati dell'INGV</a>.";
+
+    var avviso = document.getElementById("avviso-vulcani");
+    avviso.innerHTML = testo;
     avviso.classList.add("visibile");
   }
 
@@ -655,6 +688,7 @@
     disegnaAvviso(dati);
     disegnaCifre(dati);
     var perRegione = disegnaMappa(confini, dati);
+    disegnaAvvisoVulcani(dati);
     disegnaClassifica(dati, perRegione);
     disegnaStorico(storico);
     disegnaPiede(dati);
