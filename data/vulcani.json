@@ -1,5 +1,7 @@
 {
-  "_come_si_usa": "Vulcani attivi italiani. I satelliti leggono la lava come fuoco, e a differenza degli impianti industriali una colata si sposta ogni giorno su coordinate nuove: il filtro automatico dei punti caldi, che si basa sul ripetersi delle stesse coordinate, non puo riconoscerla. Questa lista invece e statica perche i vulcani non si spostano. 'raggio_km' e la zona esclusa dai conteggi: e scelto per stare sopra il limite della vegetazione, dove non c'e nulla che possa bruciare, quindi non rischia di cancellare incendi veri. 'raggio_verifica_km' e la fascia ambigua piu esterna: i focolai che vi ricadono restano nei conteggi ma vengono segnalati, perche li una colata e un incendio boschivo si assomigliano e la verifica la deve fare una persona sul bollettino INGV.",
+  "_come_si_usa": "Vulcani attivi italiani. I satelliti leggono la lava come fuoco, e a differenza degli impianti industriali una colata si sposta ogni giorno su coordinate nuove: il filtro automatico dei punti caldi, che si basa sul ripetersi delle stesse coordinate, non puo riconoscerla. Questa lista invece e statica perche i vulcani non si spostano.",
+  "_i_due_raggi": "'raggio_km' e la zona esclusa in silenzio dai conteggi e dalla mappa: si usa SOLO dove nulla puo bruciare, cioe sopra il limite della vegetazione o su roccia nuda. Dove quella condizione non vale il raggio e 0, perche cancellare in silenzio un incendio vero e molto peggio che mostrare un punto ambiguo. 'raggio_verifica_km' e la fascia in cui i focolai restano in mappa e nei conteggi, ma la pagina avvisa il lettore nominando il vulcano e rimandando ai comunicati INGV: la verifica la fa una persona.",
+  "_perche_i_raggi_sono_diversi": "Il limite della vegetazione cambia da un vulcano all'altro, e solo l'Etna e abbastanza alto (3.357 m) da avere i fianchi superiori sopra il bosco. Vesuvio, Vulcano e Campi Flegrei stanno interamente sotto quella quota e hanno pendici boscate che bruciano davvero: intorno al Vesuvio c'e il Parco Nazionale, nella caldera flegrea c'e una zona densamente abitata. Per loro nessuna esclusione silenziosa. Restano comunque coperti dal filtro automatico di build_hotspot_mask.py, che riconosce qualunque sorgente termica stabile dopo quattro giorni.",
   "vulcani": [
     {
       "nome": "Etna",
@@ -7,39 +9,39 @@
       "lon": 14.993,
       "raggio_km": 7,
       "raggio_verifica_km": 15,
-      "nota": "Sopra i 1.800-2.000 metri la vegetazione finisce, e sul cono corrisponde a circa 7 km dal cratere. Le pinete di Linguaglossa, Milo e Zafferana restano fuori dalla zona esclusa: gli incendi boschivi sulle pendici continuano a essere conteggiati."
+      "nota": "Cima a 3.357 m. Sopra i 1.800-2.000 metri la vegetazione finisce, e sul cono corrisponde a circa 7 km dal cratere: li nulla puo bruciare, quindi l'esclusione non rischia di cancellare incendi. Le pinete di Linguaglossa, Milo e Zafferana restano fuori dalla zona esclusa."
     },
     {
       "nome": "Stromboli",
       "lat": 38.789,
       "lon": 15.213,
-      "raggio_km": 2,
-      "raggio_verifica_km": 4,
-      "nota": "In attivita permanente. L'isola e piccola e il raggio la copre quasi tutta."
+      "raggio_km": 1,
+      "raggio_verifica_km": 5,
+      "nota": "Cima a 924 m, quindi sotto il limite del bosco: l'isola ha macchia che puo bruciare. Il raggio di 1 km copre solo la terrazza craterica e la parte alta della Sciara del Fuoco, che sono roccia nuda. Tutti i rilevamenti osservati finora cadono entro quel chilometro, e le celle sommitali sono comunque gia nella maschera automatica."
     },
     {
       "nome": "Vulcano",
       "lat": 38.404,
       "lon": 14.962,
-      "raggio_km": 2,
+      "raggio_km": 0,
       "raggio_verifica_km": 4,
-      "nota": "Fumarole della Fossa, di norma troppo fredde per essere viste dai satelliti. Raggio cautelativo."
+      "nota": "Cima a 500 m, isola con vegetazione. Le fumarole della Fossa sono troppo fredde per essere viste dai satelliti: nessuna esclusione silenziosa, solo avviso al lettore se qualcosa comparisse."
     },
     {
       "nome": "Vesuvio",
       "lat": 40.821,
       "lon": 14.426,
-      "raggio_km": 3,
+      "raggio_km": 0,
       "raggio_verifica_km": 6,
-      "nota": "Quiescente: oggi non produce anomalie termiche. Il raggio serve solo a essere gia pronti."
+      "nota": "Cima a 1.281 m, ben sotto il limite del bosco. Attorno al cratere c'e il Parco Nazionale del Vesuvio, con pinete che bruciano regolarmente: un raggio di esclusione qui cancellerebbe incendi veri. Nessuna esclusione silenziosa."
     },
     {
       "nome": "Campi Flegrei",
       "lat": 40.827,
       "lon": 14.139,
-      "raggio_km": 3,
+      "raggio_km": 0,
       "raggio_verifica_km": 6,
-      "nota": "Solfatara e fumarole, di norma non rilevate. Raggio cautelativo."
+      "nota": "Caldera a quota bassa e densamente abitata: Pozzuoli, Agnano, gli Astroni. Le fumarole della Solfatara stanno sui 150-160 gradi, troppo fredde perche i satelliti le leggano come fuoco. Nessuna esclusione silenziosa: qui cancellare un punto vorrebbe dire nascondere un incendio vicino alle case."
     }
   ]
 }

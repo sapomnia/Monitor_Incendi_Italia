@@ -99,11 +99,23 @@ attribuita all'Italia e portava la Sicilia in testa alla classifica regionale.
 `data/vulcani.json` è quindi una lista statica — i vulcani, a differenza degli
 incendi, stanno fermi — con due raggi per ciascuno:
 
-- **raggio interno**, escluso dai conteggi. Per l'Etna è di 7 km, scelto per
-  stare sopra il limite della vegetazione, attorno ai 1.800-2.000 metri: lassù
-  non c'è nulla che possa bruciare, quindi il filtro non rischia di cancellare
-  incendi veri nemmeno quando il vulcano è tranquillo. Le pinete di Linguaglossa,
-  Milo e Zafferana restano fuori dalla zona esclusa.
+- **raggio interno**, escluso in silenzio dai conteggi e dalla mappa. Si usa
+  **solo dove nulla può bruciare**. Per l'Etna è di 7 km: la cima è a 3.357 m e
+  sopra i 1.800-2.000 metri la vegetazione finisce, il che sul cono corrisponde
+  grosso modo a quel raggio. Le pinete di Linguaglossa, Milo e Zafferana restano
+  fuori dalla zona esclusa.
+
+  **Il limite della vegetazione però cambia da un vulcano all'altro, e solo
+  l'Etna è abbastanza alto.** Vesuvio (1.281 m), Stromboli (924 m), Vulcano
+  (500 m) e Campi Flegrei (458 m) stanno interamente sotto quella quota e hanno
+  pendici che bruciano davvero: attorno al Vesuvio c'è il Parco Nazionale con le
+  sue pinete, nella caldera flegrea ci sono Pozzuoli, Agnano e gli Astroni. Per
+  loro il raggio interno è **zero**: nessuna esclusione silenziosa, perché
+  cancellare senza dirlo un incendio vicino alle case è molto peggio che
+  mostrare un punto ambiguo. L'unica eccezione è Stromboli, con 1 km che copre
+  la sola terrazza craterica e la parte alta della Sciara del Fuoco, roccia
+  nuda. Restano tutti coperti dal filtro automatico di `build_hotspot_mask.py`,
+  che riconosce qualunque sorgente termica stabile dopo quattro giorni.
 - **raggio esterno**, fino a 15 km: la fascia ambigua, dove una colata e un
   incendio boschivo si assomigliano. Lì i focolai **restano in mappa e nei
   conteggi**, ma sotto la mappa compare un avviso che nomina il vulcano, dà la

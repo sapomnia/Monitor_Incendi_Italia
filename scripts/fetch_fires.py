@@ -286,7 +286,11 @@ def classifica_vulcano(punto, vulcani):
     """
     for vulcano in vulcani:
         distanza = distanza_m(punto["lat"], punto["lon"], vulcano["lat"], vulcano["lon"]) / 1000.0
-        if distanza <= vulcano.get("raggio_km", 0):
+        # raggio_km a zero significa "nessuna esclusione silenziosa": vale per i
+        # vulcani bassi, le cui pendici sono boscate o abitate. Il confronto va
+        # quindi scritto in modo che uno zero non escluda proprio nulla.
+        raggio = vulcano.get("raggio_km", 0)
+        if raggio > 0 and distanza <= raggio:
             return vulcano["nome"], round(distanza, 1), True
         if distanza <= vulcano.get("raggio_verifica_km", 0):
             return vulcano["nome"], round(distanza, 1), False
