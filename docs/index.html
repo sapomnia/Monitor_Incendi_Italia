@@ -95,9 +95,6 @@
   .regione.evidenzia { fill: #33302e; stroke: var(--fuoco); }
   .focolaio { fill: var(--fuoco); fill-opacity: .55; stroke: var(--fuoco); stroke-width: 1; vector-effect: non-scaling-stroke; }
   .focolaio.notte { fill-opacity: .9; stroke: #ffd0b8; }
-  /* Vulcani: triangolo, il simbolo cartografico consueto, in tono spento
-     perche questo calore non entra in nessun conteggio. */
-  .vulcano { fill: var(--nero); fill-opacity: .45; stroke: #c9c2bc; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 
   .legenda {
     display: flex;
@@ -110,13 +107,6 @@
   .legenda span { display: inline-flex; align-items: center; gap: 7px; }
   .pallino { width: 11px; height: 11px; border-radius: 50%; background: var(--fuoco); opacity: .55; border: 1px solid var(--fuoco); }
   .pallino.notte { opacity: .95; border-color: #ffd0b8; }
-  .triangolo {
-    width: 0; height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 10px solid var(--tenue);
-    opacity: .75;
-  }
   .misure { display: inline-flex; align-items: flex-end; gap: 5px; }
   .misure i { display: block; border-radius: 50%; border: 1px solid var(--fuoco); background: var(--fuoco); opacity: .55; }
 
@@ -212,7 +202,6 @@
       <div class="legenda">
         <span><i class="pallino"></i> focolaio diurno</span>
         <span><i class="pallino notte"></i> ancora acceso di notte</span>
-        <span id="voce-vulcani" hidden><i class="triangolo"></i> attività vulcanica, esclusa dai conteggi</span>
         <span class="misure" id="misure"></span>
       </div>
     </div>
@@ -432,39 +421,10 @@
       perRegione[f.properties.nome] = nodo;
     });
 
-    // I vulcani si disegnano sopra ai focolai, non sotto: un cerchio acceso li
-    // coprirebbe proprio dove serve vederli, cioe accanto a un incendio vero.
-    // Il triangolo resta comunque sommesso, quasi solo contorno.
-    function disegnaVulcani() {
-    (dati.focolai_vulcanici || []).forEach(function (v) {
-      var xy = proiezione.punto(v.lon, v.lat);
-      var r = raggio(v.frp);
-      var triangolo = svgNodo("path", {
-        "class": "vulcano",
-        d: "M" + xy[0].toFixed(1) + " " + (xy[1] - r).toFixed(1) +
-           "L" + (xy[0] + r * 0.95).toFixed(1) + " " + (xy[1] + r * 0.75).toFixed(1) +
-           "L" + (xy[0] - r * 0.95).toFixed(1) + " " + (xy[1] + r * 0.75).toFixed(1) + "Z"
-      });
-      triangolo.addEventListener("mouseenter", function () {
-        tip.innerHTML = "";
-        tip.appendChild(elemento("div", "luogo", v.vulcano || "Attività vulcanica"));
-        tip.appendChild(elemento("div", "dato",
-          "intensità " + numero(v.frp, 1) + " MW, a " +
-          numero(v.distanza_vulcano_km, 1) + " km dal cratere"));
-        tip.appendChild(elemento("div", "dato", "non è un incendio: escluso dai conteggi"));
-        tip.classList.add("on");
-        var scala = box.clientWidth / larghezza;
-        var sinistra = xy[0] * scala + 14;
-        if (sinistra + 230 > box.clientWidth) sinistra = xy[0] * scala - 244;
-        tip.style.left = Math.max(0, sinistra) + "px";
-        tip.style.top = (xy[1] * scala + 12) + "px";
-      });
-      triangolo.addEventListener("mouseleave", function () {
-        tip.classList.remove("on");
-      });
-      svg.appendChild(triangolo);
-    });
-    }
+    // I focolai vulcanici non si disegnano affatto: se non entrano nei
+    // conteggi, un segno in piu sulla mappa fa solo domandare al lettore cosa
+    // sia. Restano in docs/latest.json, campo focolai_vulcanici, per chi
+    // volesse verificare cosa e stato tolto e perche.
 
     var gruppo = svgNodo("g", {});
     svg.appendChild(gruppo);
@@ -503,10 +463,7 @@
       gruppo.appendChild(cerchio);
     });
 
-    disegnaVulcani();
     disegnaMisure(dati);
-    document.getElementById("voce-vulcani").hidden =
-      !(dati.focolai_vulcanici && dati.focolai_vulcanici.length);
     return perRegione;
   }
 
@@ -642,10 +599,10 @@
       dati.focolai_vulcanici.forEach(function (v) {
         if (v.vulcano && nomi.indexOf(v.vulcano) === -1) nomi.push(v.vulcano);
       });
-      esclusi.innerHTML += " Fuori dai conteggi anche il calore dei vulcani in " +
-        "attività (" + nomi.join(", ") + "), che il satellite legge come fuoco: " +
-        "in mappa sono i triangoli, per " + numero(dati.totali.frp_vulcanico || 0) +
-        " MW che non c'entrano con gli incendi.";
+      esclusi.innerHTML += " Fuori dalla mappa e dai conteggi anche il calore dei " +
+        "vulcani in attività (" + nomi.join(", ") + "), che il satellite legge come " +
+        "fuoco: " + numero(dati.totali.frp_vulcanico || 0) + " MW che con gli incendi " +
+        "non c'entrano nulla.";
     }
     piede.appendChild(esclusi);
 

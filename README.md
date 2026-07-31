@@ -110,8 +110,11 @@ incendi, stanno fermi — con due raggi per ciascuno:
   stampa a video. La verifica sul bollettino INGV la fa una persona, non uno
   script.
 
-In mappa i focolai vulcanici sono triangoli, disegnati sopra i cerchi perché
-altrimenti un incendio adiacente li coprirebbe proprio dove serve vederli.
+I focolai vulcanici **non compaiono in mappa**: se non entrano nei conteggi, un
+segno in più costringe il lettore a chiedersi cosa sia, senza dargli niente in
+cambio. Restano in `docs/latest.json`, campo `focolai_vulcanici`, con coordinate
+e intensità, e la nota in fondo alla pagina dichiara quanti megawatt sono stati
+tolti e per quali vulcani.
 
 **Le regioni sono ordinate per intensità, non per numero di focolai.** Dieci
 bruciature di stoppie nella pianura padana non sono un'emergenza; due incendi
