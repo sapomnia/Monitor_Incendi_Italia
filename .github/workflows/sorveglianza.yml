@@ -16,6 +16,15 @@ on:
     # 22:00 UTC: intercetta la giornata in cui sono saltati entrambi i giri.
     - cron: "0 22 * * *"
   workflow_dispatch:
+    inputs:
+      ore_limite:
+        description: >-
+          Soglia in ore oltre la quale i dati sono considerati fermi. Lasciala
+          vuota per il valore normale (18). Serve a provare la catena
+          d'allarme: con 0 il recupero parte sempre e la verifica finale
+          fallisce apposta, cosi si controlla che la mail arrivi davvero.
+        type: string
+        required: false
 
 # Stesso gruppo del workflow principale: se sta gia girando quello, aspettiamo
 # invece di scrivere gli stessi file in contemporanea.
@@ -34,6 +43,8 @@ jobs:
 
       - name: Da quanto non si aggiorna?
         id: controllo
+        env:
+          ORE_LIMITE: ${{ inputs.ore_limite }}
         run: python3 scripts/controlla_freschezza.py
 
       # Il recupero e sicuro proprio perche la serie storica si ricostruisce
@@ -64,4 +75,6 @@ jobs:
       # fallimento e voluto, perche e l'unico modo di far partire la mail.
       - name: Verifica finale, fallisce apposta se il problema resta
         if: steps.controllo.outputs.stantio == 'true'
+        env:
+          ORE_LIMITE: ${{ inputs.ore_limite }}
         run: python3 scripts/controlla_freschezza.py --esci-male

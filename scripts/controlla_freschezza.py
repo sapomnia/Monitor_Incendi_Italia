@@ -23,7 +23,9 @@ LATEST = os.path.join(ROOT, "docs", "latest.json")
 # Stessa soglia dell'avviso in pagina. Fra il giro delle 15:15 e quello delle
 # 06:45 passano 15 ore e mezza di silenzio del tutto normali: sotto le 18 ore
 # non e successo niente.
-ORE_LIMITE = float(os.environ.get("ORE_LIMITE", "18"))
+# Il "or" copre anche la variabile presente ma vuota, che e come arriva da un
+# input facoltativo di GitHub Actions lasciato in bianco.
+ORE_LIMITE = float(os.environ.get("ORE_LIMITE") or 18)
 
 
 def eta_ore():
