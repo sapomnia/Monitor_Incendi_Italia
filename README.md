@@ -129,6 +129,10 @@ apposta, e un'esecuzione fallita la mail la manda. Il recupero è innocuo propri
 perché la serie storica si ricostruisce dall'archivio: un giro in più, a
 un'ora qualunque, non altera nessun numero.
 
+Se vuoi rifare la prova in futuro: **Actions → Sorveglia la freschezza dei dati
+→ Run workflow**, e metti `0` nel campo della soglia. Lasciandolo vuoto usa il
+valore normale.
+
 **Ogni download viene ritentato tre volte** con attesa crescente, rispettando
 l'eventuale `Retry-After` del server. I 502 e 503 passeggeri della NASA
 altrimenti farebbero saltare un sensore per l'intera giornata. Sugli errori
