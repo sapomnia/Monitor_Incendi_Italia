@@ -1,8 +1,7 @@
 # Gli incendi in Italia nelle ultime 24 ore
 
 Pagina aggiornata automaticamente ogni giorno con i focolai rilevati dai
-satelliti NASA sul territorio italiano. Pensata per essere pubblicata su
-Fanpage tramite iframe.
+satelliti NASA sul territorio italiano. Pensata per essere pubblicata tramite iframe.
 
 Nessuna dipendenza da installare: gli script usano solo la libreria standard di
 Python, la pagina non carica librerie esterne. Costo di esercizio: zero.
