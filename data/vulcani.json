@@ -1,0 +1,45 @@
+{
+  "_come_si_usa": "Vulcani attivi italiani. I satelliti leggono la lava come fuoco, e a differenza degli impianti industriali una colata si sposta ogni giorno su coordinate nuove: il filtro automatico dei punti caldi, che si basa sul ripetersi delle stesse coordinate, non puo riconoscerla. Questa lista invece e statica perche i vulcani non si spostano. 'raggio_km' e la zona esclusa dai conteggi: e scelto per stare sopra il limite della vegetazione, dove non c'e nulla che possa bruciare, quindi non rischia di cancellare incendi veri. 'raggio_verifica_km' e la fascia ambigua piu esterna: i focolai che vi ricadono restano nei conteggi ma vengono segnalati, perche li una colata e un incendio boschivo si assomigliano e la verifica la deve fare una persona sul bollettino INGV.",
+  "vulcani": [
+    {
+      "nome": "Etna",
+      "lat": 37.751,
+      "lon": 14.993,
+      "raggio_km": 7,
+      "raggio_verifica_km": 15,
+      "nota": "Sopra i 1.800-2.000 metri la vegetazione finisce, e sul cono corrisponde a circa 7 km dal cratere. Le pinete di Linguaglossa, Milo e Zafferana restano fuori dalla zona esclusa: gli incendi boschivi sulle pendici continuano a essere conteggiati."
+    },
+    {
+      "nome": "Stromboli",
+      "lat": 38.789,
+      "lon": 15.213,
+      "raggio_km": 2,
+      "raggio_verifica_km": 4,
+      "nota": "In attivita permanente. L'isola e piccola e il raggio la copre quasi tutta."
+    },
+    {
+      "nome": "Vulcano",
+      "lat": 38.404,
+      "lon": 14.962,
+      "raggio_km": 2,
+      "raggio_verifica_km": 4,
+      "nota": "Fumarole della Fossa, di norma troppo fredde per essere viste dai satelliti. Raggio cautelativo."
+    },
+    {
+      "nome": "Vesuvio",
+      "lat": 40.821,
+      "lon": 14.426,
+      "raggio_km": 3,
+      "raggio_verifica_km": 6,
+      "nota": "Quiescente: oggi non produce anomalie termiche. Il raggio serve solo a essere gia pronti."
+    },
+    {
+      "nome": "Campi Flegrei",
+      "lat": 40.827,
+      "lon": 14.139,
+      "raggio_km": 3,
+      "raggio_verifica_km": 6,
+      "nota": "Solfatara e fumarole, di norma non rilevate. Raggio cautelativo."
+    }
+  ]
+}

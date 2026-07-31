@@ -17,6 +17,7 @@ Python, la pagina non carica librerie esterne. Costo di esercizio: zero.
 | `scripts/controlla_freschezza.py` | Verifica da quanto non riesce un aggiornamento. Due volte al giorno. |
 | `scripts/serve.mjs` | Server statico per l'anteprima locale. |
 | `docs/` | Il sito pubblicato: pagina, confini, dati. |
+| `data/vulcani.json` | Lista statica dei vulcani attivi: la lava si muove, il filtro automatico non la prende. |
 | `data/archive/` | Un file per giorno con tutti i rilevamenti grezzi, per le analisi future. |
 
 ## Messa in funzione
@@ -86,6 +87,31 @@ il filtro diventa più preciso man mano che il progetto gira. Nel dubbio, i punt
 esclusi sono elencati in chiaro dentro `docs/latest.json`, campo
 `punti_caldi_esclusi`, e le correzioni manuali si mettono in
 `data/hotspot_override.json`.
+
+**I vulcani hanno bisogno di un filtro tutto loro.** La maschera automatica
+riconosce le sorgenti che si accendono sempre nelle stesse coordinate, e infatti
+aveva già preso il cratere sommitale dell'Etna. Ma **una colata si sposta**: ogni
+giorno illumina coordinate nuove, senza storia alle spalle, e dal punto di vista
+del filtro è indistinguibile da un incendio che si propaga. Il 31 luglio 2026,
+con l'eruzione in corso dal 22 giugno, la lava valeva il 16% dell'intensità
+attribuita all'Italia e portava la Sicilia in testa alla classifica regionale.
+
+`data/vulcani.json` è quindi una lista statica — i vulcani, a differenza degli
+incendi, stanno fermi — con due raggi per ciascuno:
+
+- **raggio interno**, escluso dai conteggi. Per l'Etna è di 7 km, scelto per
+  stare sopra il limite della vegetazione, attorno ai 1.800-2.000 metri: lassù
+  non c'è nulla che possa bruciare, quindi il filtro non rischia di cancellare
+  incendi veri nemmeno quando il vulcano è tranquillo. Le pinete di Linguaglossa,
+  Milo e Zafferana restano fuori dalla zona esclusa.
+- **raggio esterno**, fino a 15 km: la fascia ambigua, dove una colata e un
+  incendio boschivo si assomigliano. Lì i focolai **restano nei conteggi** ma
+  finiscono nel campo `da_verificare` di `docs/latest.json`, e lo script li
+  stampa a video. La verifica sul bollettino INGV la fa una persona, non uno
+  script.
+
+In mappa i focolai vulcanici sono triangoli, disegnati sopra i cerchi perché
+altrimenti un incendio adiacente li coprirebbe proprio dove serve vederli.
 
 **Le regioni sono ordinate per intensità, non per numero di focolai.** Dieci
 bruciature di stoppie nella pianura padana non sono un'emergenza; due incendi

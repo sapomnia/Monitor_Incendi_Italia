@@ -33,6 +33,7 @@ HISTORY = os.path.join(ROOT, "docs", "storico.json")
 ARCHIVE_DIR = os.path.join(ROOT, "data", "archive")
 MASK = os.path.join(ROOT, "data", "hotspot_permanenti.json")
 OVERRIDE = os.path.join(ROOT, "data", "hotspot_override.json")
+VULCANI = os.path.join(ROOT, "data", "vulcani.json")
 
 # Bounding box dell'Italia, con un margine. Serve solo a scremare in fretta i
 # feed europei: il ritaglio vero e fatto sui poligoni regionali.
@@ -260,6 +261,38 @@ def carica_punti_caldi():
     return escludi, salva
 
 
+def carica_vulcani():
+    """Lista statica dei vulcani attivi italiani. Vedi data/vulcani.json."""
+    if not os.path.exists(VULCANI):
+        print("  ATTENZIONE: elenco vulcani assente, la lava verra contata "
+              "come incendio", file=sys.stderr)
+        return []
+    try:
+        with open(VULCANI, encoding="utf-8") as handle:
+            return json.load(handle).get("vulcani", [])
+    except (ValueError, OSError, KeyError):
+        print("  ATTENZIONE: elenco vulcani illeggibile, lo ignoro", file=sys.stderr)
+        return []
+
+
+def classifica_vulcano(punto, vulcani):
+    """Dice se il punto e su un vulcano, e con quanta certezza.
+
+    Restituisce (nome, distanza_km, certo) dove 'certo' e vero solo dentro il
+    raggio interno, quello scelto per stare sopra il limite della vegetazione:
+    li niente puo bruciare, quindi il calore e per forza lava. Nella fascia
+    esterna una colata e un incendio boschivo si assomigliano, e la decisione
+    non spetta a uno script.
+    """
+    for vulcano in vulcani:
+        distanza = distanza_m(punto["lat"], punto["lon"], vulcano["lat"], vulcano["lon"]) / 1000.0
+        if distanza <= vulcano.get("raggio_km", 0):
+            return vulcano["nome"], round(distanza, 1), True
+        if distanza <= vulcano.get("raggio_verifica_km", 0):
+            return vulcano["nome"], round(distanza, 1), False
+    return None
+
+
 def vicino_a(punto, coordinate, raggio_m):
     for voce in coordinate:
         if distanza_m(punto["lat"], punto["lon"], voce[0], voce[1]) <= raggio_m:
@@ -368,6 +401,15 @@ def raggruppa(punti):
                 "sorgenti": sorted({m["sorgente"] for m in membri}),
             }
         )
+        # Etichette vulcaniche: sopravvivono al raggruppamento perche servono
+        # sia a disegnare i focolai vulcanici sia a segnalare quelli dubbi.
+        for chiave in ("vulcano", "zona_vulcanica"):
+            valore = next((m[chiave] for m in membri if m.get(chiave)), None)
+            if valore:
+                focolai[-1][chiave] = valore
+                focolai[-1]["distanza_vulcano_km"] = min(
+                    m["distanza_vulcano_km"] for m in membri if m.get(chiave)
+                )
 
     focolai.sort(key=lambda f: f["frp"], reverse=True)
     return focolai
@@ -436,7 +478,7 @@ def ricostruisci_storico():
             # niente acciaierie e vulcani.
             if voce.get("confidenza") not in CONFIDENZE_PUBBLICATE:
                 continue
-            if voce.get("punto_caldo_permanente"):
+            if voce.get("punto_caldo_permanente") or voce.get("vulcano"):
                 continue
             chiave = (voce["lat"], voce["lon"], voce["istante"], voce["sorgente"])
             osservazioni[chiave] = voce
@@ -533,17 +575,34 @@ def main():
     attendibili = [p for p in italiani if p["confidenza"] in CONFIDENZE_PUBBLICATE]
     scartati_confidenza = len(italiani) - len(attendibili)
 
-    # Punti caldi permanenti: impianti industriali e vulcani, che i satelliti
-    # rilevano tutti i giorni e che non sono incendi.
+    # Due filtri diversi per due problemi diversi: gli impianti industriali
+    # stanno fermi e li riconosce la maschera automatica, la lava si sposta
+    # ogni giorno e la riconosce solo una lista di vulcani scritta a mano.
     escludi, salva = carica_punti_caldi()
+    vulcani = carica_vulcani()
+
     pubblicabili = []
     esclusi_permanenti = []
+    vulcanici = []
     for punto in attendibili:
+        vulcano = classifica_vulcano(punto, vulcani)
+        if vulcano is not None and vulcano[2]:
+            punto["vulcano"] = vulcano[0]
+            punto["distanza_vulcano_km"] = vulcano[1]
+            vulcanici.append(punto)
+            continue
+
         colpito = vicino_a(punto, escludi, RAGGIO_PUNTO_CALDO_M)
         if colpito is not None and vicino_a(punto, salva, RAGGIO_PUNTO_CALDO_M) is None:
             punto["motivo_esclusione"] = colpito[2]
             esclusi_permanenti.append(punto)
             continue
+
+        # Fascia esterna: resta nei conteggi, ma va segnalato perche li una
+        # colata e un incendio boschivo non si distinguono dal satellite.
+        if vulcano is not None:
+            punto["zona_vulcanica"] = vulcano[0]
+            punto["distanza_vulcano_km"] = vulcano[1]
         pubblicabili.append(punto)
 
     print("Rilevamenti: %d scaricati -> %d in finestra -> %d in Italia -> %d attendibili -> %d pubblicabili"
@@ -554,7 +613,12 @@ def main():
         print("  vulcani verranno conteggiati come incendi.")
 
     focolai = raggruppa(pubblicabili)
+    focolai_vulcanici = raggruppa(vulcanici)
+    da_verificare = [f for f in focolai if f.get("zona_vulcanica")]
     print("Focolai stimati: %d" % len(focolai))
+    if focolai_vulcanici:
+        print("Focolai di origine vulcanica, esclusi dai conteggi: %d (%.1f MW)"
+              % (len(focolai_vulcanici), sum(f["frp"] for f in focolai_vulcanici)))
 
     per_regione = defaultdict(lambda: {"rilevamenti": 0, "focolai": 0, "frp": 0.0, "notturni": 0})
     for punto in pubblicabili:
@@ -604,7 +668,26 @@ def main():
             "frp": round(sum(p["frp"] for p in pubblicabili), 1),
             "esclusi_bassa_confidenza": scartati_confidenza,
             "esclusi_punti_caldi": len(esclusi_permanenti),
+            "esclusi_vulcanici": len(vulcanici),
+            "frp_vulcanico": round(sum(p["frp"] for p in vulcanici), 1),
         },
+        # Disegnati in mappa con un segno diverso, fuori da ogni conteggio: il
+        # lettore vede che il vulcano sta facendo qualcosa senza che quel
+        # calore finisca nella classifica degli incendi.
+        "focolai_vulcanici": focolai_vulcanici,
+        # Fascia esterna: contati, ma da controllare sul bollettino INGV prima
+        # di scriverci sopra un pezzo.
+        "da_verificare": [
+            {
+                "lat": f["lat"],
+                "lon": f["lon"],
+                "frp": f["frp"],
+                "regione": f["regione"],
+                "vulcano": f["zona_vulcanica"],
+                "distanza_km": f["distanza_vulcano_km"],
+            }
+            for f in sorted(da_verificare, key=lambda f: -f["frp"])
+        ],
         # Elenco in chiaro di cosa e stato tolto dai conteggi, per poterlo
         # controllare invece di doversi fidare.
         "punti_caldi_esclusi": [
@@ -654,6 +737,8 @@ def main():
                         "regione": p["regione"],
                         "istat": p["istat"],
                         "punto_caldo_permanente": p.get("motivo_esclusione"),
+                        "vulcano": p.get("vulcano"),
+                        "zona_vulcanica": p.get("zona_vulcanica"),
                     }
                     for p in sorted(italiani, key=lambda p: p["istante"])
                 ],
@@ -683,6 +768,23 @@ def main():
             print("  %8.4f, %8.4f  %-24s FRP %6.1f  (%s)" % (
                 punto["lat"], punto["lon"], punto["regione"], punto["frp"],
                 punto["motivo_esclusione"]))
+
+    if focolai_vulcanici:
+        print()
+        print("Attivita vulcanica esclusa dai conteggi:")
+        for f in sorted(focolai_vulcanici, key=lambda f: -f["frp"]):
+            print("  %-14s %7.1f MW  a %4.1f km dal cratere  (%d rilevamenti)"
+                  % (f.get("vulcano", "?"), f["frp"], f.get("distanza_vulcano_km", 0),
+                     f["rilevamenti"]))
+
+    if da_verificare:
+        print()
+        print("DA VERIFICARE sul bollettino INGV prima di pubblicare:")
+        print("  questi focolai sono nei conteggi, ma cadono vicino a un vulcano")
+        for f in sorted(da_verificare, key=lambda f: -f["frp"]):
+            print("  %-14s %7.1f MW  a %4.1f km dal cratere di %s"
+                  % (f["regione"][:14], f["frp"], f["distanza_vulcano_km"],
+                     f["zona_vulcanica"]))
 
     if classifica:
         print()
