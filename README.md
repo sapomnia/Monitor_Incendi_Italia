@@ -66,13 +66,13 @@ node scripts/serve.mjs
 ## Embed
 
 ```html
-<iframe src="https://TUO-UTENTE.github.io/IncendiFanPage/"
+<iframe src="https://TUO-UTENTE.github.io/IncendiXXX/"
         width="100%" height="1400" frameborder="0" scrolling="no"
         title="Gli incendi in Italia nelle ultime 24 ore"></iframe>
 ```
 
 La pagina comunica la propria altezza al contenitore via `postMessage`, con un
-messaggio `{ tipo: "incendi-italia-altezza", altezza: N }`. Se il CMS di Fanpage
+messaggio `{ tipo: "incendi-italia-altezza", altezza: N }`. Se il CMS
 supporta il ridimensionamento dinamico basta ascoltarlo; altrimenti l'altezza
 fissa qui sopra funziona, va solo verificata su mobile dove la pagina è più
 alta.
