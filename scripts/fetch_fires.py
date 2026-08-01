@@ -430,23 +430,6 @@ def raggruppa(punti):
 # Storico
 # --------------------------------------------------------------------------
 
-def e_incendio(focolaio):
-    """Distingue un incendio da un fuoco isolato.
-
-    Il criterio non e l'intensita, che sarebbe il primo istinto ma porta fuori
-    strada: di notte il terreno e freddo e il satellite vede anche fiamme
-    piccole, quindi i rilevamenti notturni hanno intensita mediana piu bassa di
-    quelli diurni e una soglia cancellerebbe proprio i fuochi non sorvegliati.
-
-    Contano invece l'ora e la durata. Nessuno brucia le stoppie alle tre di
-    notte, e una stoppia si consuma prima del passaggio successivo mentre un
-    incendio e ancora li. Resta un'etichetta di verosimiglianza, non un
-    accertamento: e per questo che l'altra categoria si chiama "fuochi isolati"
-    e non "roghi agricoli", che affermerebbe una causa che il dato non contiene.
-    """
-    return bool(focolaio["notte"] or focolaio["rilevamenti"] > 1)
-
-
 def unisci_intervalli(intervalli):
     """Fonde gli intervalli temporali che si sovrappongono."""
     if not intervalli:
@@ -546,17 +529,11 @@ def ricostruisci_storico():
         if not giorno_completo(giorno):
             continue
         punti = per_giorno[giorno]
-        gruppi = raggruppa(punti)
-        incendi = [f for f in gruppi if e_incendio(f)]
         storico.append({
             "giorno": giorno,
             "rilevamenti": len(punti),
-            "focolai": len(gruppi),
-            # Il grafico giorno per giorno segue la stessa definizione della
-            # mappa, altrimenti la serie racconterebbe una cosa e la mappa
-            # un'altra.
-            "incendi": len(incendi),
-            "frp": round(sum(f["frp"] for f in incendi), 1),
+            "focolai": len(raggruppa(punti)),
+            "frp": round(sum(p["frp"] for p in punti), 1),
         })
 
     storico = storico[-GIORNI_STORICO:]
@@ -648,25 +625,22 @@ def main():
         print("  Esegui scripts/build_hotspot_mask.py, altrimenti acciaierie e")
         print("  vulcani verranno conteggiati come incendi.")
 
-    tutti_i_focolai = raggruppa(pubblicabili)
-    focolai = [f for f in tutti_i_focolai if e_incendio(f)]
-    isolati = [f for f in tutti_i_focolai if not e_incendio(f)]
+    focolai = raggruppa(pubblicabili)
     focolai_vulcanici = raggruppa(vulcanici)
     da_verificare = [f for f in focolai if f.get("zona_vulcanica")]
-    print("Focolai stimati: %d, di cui %d incendi e %d fuochi isolati"
-          % (len(tutti_i_focolai), len(focolai), len(isolati)))
+    print("Focolai stimati: %d" % len(focolai))
     if focolai_vulcanici:
         print("Focolai di origine vulcanica, esclusi dai conteggi: %d (%.1f MW)"
               % (len(focolai_vulcanici), sum(f["frp"] for f in focolai_vulcanici)))
 
-    # La classifica conta solo gli incendi, come la mappa: i fuochi isolati
-    # sono dichiarati nella nota ma non spostano la graduatoria fra le regioni.
     per_regione = defaultdict(lambda: {"rilevamenti": 0, "focolai": 0, "frp": 0.0, "notturni": 0})
+    for punto in pubblicabili:
+        voce = per_regione[punto["regione"]]
+        voce["rilevamenti"] += 1
+        voce["frp"] += punto["frp"]
     for focolaio in focolai:
         voce = per_regione[focolaio["regione"]]
         voce["focolai"] += 1
-        voce["rilevamenti"] += focolaio["rilevamenti"]
-        voce["frp"] += focolaio["frp"]
         if focolaio["notte"]:
             voce["notturni"] += 1
 
@@ -702,13 +676,9 @@ def main():
             "ultimo_rilevamento": ultimo.strftime("%Y-%m-%dT%H:%MZ") if ultimo else None,
         },
         "totali": {
-            # Tutti i numeri qui sotto si riferiscono ai soli incendi, cioe a
-            # quello che il lettore vede in mappa.
-            "rilevamenti": sum(f["rilevamenti"] for f in focolai),
+            "rilevamenti": len(pubblicabili),
             "focolai": len(focolai),
-            "frp": round(sum(f["frp"] for f in focolai), 1),
-            "fuochi_isolati": len(isolati),
-            "frp_fuochi_isolati": round(sum(f["frp"] for f in isolati), 1),
+            "frp": round(sum(p["frp"] for p in pubblicabili), 1),
             "esclusi_bassa_confidenza": scartati_confidenza,
             "esclusi_punti_caldi": len(esclusi_permanenti),
             "esclusi_vulcanici": len(vulcanici),
@@ -753,9 +723,6 @@ def main():
             s["etichetta"] for s in SOURCES if s["id"] not in sorgenti_ok
         ],
         "focolai": focolai,
-        # Fuori dalla mappa e dai conteggi, ma nel file: chi vuole controllare
-        # cosa e stato messo da parte deve poterlo fare.
-        "fuochi_isolati": isolati,
         "fonte": "NASA FIRMS (VIIRS 375 m, MODIS 1 km) - dati near real-time",
     }
 

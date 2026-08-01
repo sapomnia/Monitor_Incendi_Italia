@@ -139,29 +139,13 @@ cambio. Restano in `docs/latest.json`, campo `focolai_vulcanici`, con coordinate
 e intensità, e la nota in fondo alla pagina dichiara quanti megawatt sono stati
 tolti e per quali vulcani.
 
-**In mappa vanno solo gli incendi, non tutti i fuochi.** Un focolaio entra in
-mappa e nei conteggi se è **notturno oppure visto da più passaggi successivi**;
-gli altri — diurni e visti una volta sola — restano fuori come *fuochi isolati*,
-dichiarati nella nota sotto la mappa e conservati in `docs/latest.json`, campo
-`fuochi_isolati`.
-
-Il criterio **non è l'intensità**, che sarebbe il primo istinto e porta fuori
-strada: di notte il terreno è freddo e il satellite distingue anche fiamme
-piccole, quindi i rilevamenti notturni hanno intensità mediana *più bassa* di
-quelli diurni (1,4 MW contro 5,9 nella giornata del 30 luglio). Una soglia a 3 MW
-avrebbe cancellato l'81% dei rilevamenti notturni, cioè proprio i fuochi che
-nessuno stava sorvegliando, tenendo invece i roghi agricoli diurni.
-
-Contano quindi l'ora e la durata: nessuno brucia le stoppie alle tre del mattino,
-e una bruciatura si consuma prima che il satellite ripassi mentre un incendio è
-ancora lì. Resta un'etichetta di verosimiglianza, non un accertamento, e per
-questo la categoria scartata si chiama "fuochi isolati" e **non "roghi
-agricoli"**: il dato dice che è bruciato di giorno ed è stato visto una volta
-sola, non dice la causa. Dentro ci finiscono anche sfalci, potature, rifiuti, e
-qualche incendio appena scoppiato che comparirà nell'aggiornamento successivo.
-
-**Le regioni sono ordinate per intensità, non per numero di incendi**, con lo
-stesso indicatore: l'FRP in megawatt.
+**Le regioni sono ordinate per intensità, non per numero di focolai.** Dieci
+bruciature di stoppie nella pianura padana non sono un'emergenza; due incendi
+che alle due di notte stanno ancora bruciando in Calabria sì. L'indicatore è
+l'FRP, la potenza radiativa in megawatt misurata dal satellite. Per lo stesso
+motivo la pagina segnala i focolai ancora accesi di notte: un fuoco diurno e
+isolato in pianura è quasi sempre agricolo, uno che continua nel buio è un
+incendio che nessuno ha spento.
 
 **Un focolaio non è un rilevamento.** Un singolo incendio accende più pixel, e
 più satelliti lo vedono nello stesso giro d'orologio. I rilevamenti entro 1,5 km
