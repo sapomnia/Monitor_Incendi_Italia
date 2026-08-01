@@ -409,6 +409,10 @@ def raggruppa(punti):
                 # Un fuoco ancora acceso di notte non e una bruciatura agricola
                 # sorvegliata: e un incendio che sta continuando da solo.
                 "notte": any(m["giorno_notte"] == "N" for m in membri),
+                # Quanti di quei passaggi erano notturni. Insieme al numero
+                # totale di rilevamenti e l'indizio che permette al lettore di
+                # farsi un'idea da solo, senza che sia la mappa a decidere.
+                "notturni": sum(1 for m in membri if m["giorno_notte"] == "N"),
                 "sorgenti": sorted({m["sorgente"] for m in membri}),
             }
         )

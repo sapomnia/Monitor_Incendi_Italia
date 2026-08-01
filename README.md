@@ -147,6 +147,15 @@ motivo la pagina segnala i focolai ancora accesi di notte: un fuoco diurno e
 isolato in pianura è quasi sempre agricolo, uno che continua nel buio è un
 incendio che nessuno ha spento.
 
+**Il pop-up dà al lettore gli indizi, non il verdetto.** Passando sopra un
+cerchio compaiono quante volte i satelliti hanno visto quel punto e quanti di
+quei passaggi erano notturni. Sono i due segnali che permettono di stimare se si
+tratta di un incendio o di un fuoco isolato: un punto visto una volta sola e di
+giorno è spesso una bruciatura di residui che si esaurisce in un'ora, uno visto
+da più passaggi sta durando, e uno ancora acceso nel cuore della notte è quasi
+sempre un fuoco che nessuno sta controllando. La mappa li mostra e basta: la
+valutazione la fa chi legge, perché restano indizi e non certezze.
+
 **Un focolaio non è un rilevamento.** Un singolo incendio accende più pixel, e
 più satelliti lo vedono nello stesso giro d'orologio. I rilevamenti entro 1,5 km
 vengono uniti in un focolaio, con l'FRP sommato.

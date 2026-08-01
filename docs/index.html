@@ -474,11 +474,21 @@
       cerchio.addEventListener("mouseenter", function () {
         tip.innerHTML = "";
         tip.appendChild(elemento("div", "luogo", f.regione));
-        tip.appendChild(elemento("div", "dato",
-          "intensità " + numero(f.frp, 1) + " MW · " +
-          f.rilevamenti + (f.rilevamenti === 1 ? " rilevamento" : " rilevamenti")));
+        tip.appendChild(elemento("div", "dato", "intensità " + numero(f.frp, 1) + " MW"));
+
+        // Quante volte i satelliti l'hanno visto e quanti di quei passaggi
+        // erano notturni: sono i due indizi che dicono al lettore quanto e
+        // probabile che sia un incendio e non un fuoco di poche ore.
+        var notturni = f.notturni !== undefined ? f.notturni : (f.notte ? 1 : 0);
+        var quanti = f.rilevamenti + (f.rilevamenti === 1 ? " rilevamento" : " rilevamenti");
+        var diNotte = notturni === 0
+          ? "nessuno di notte"
+          : (notturni === f.rilevamenti
+              ? (f.rilevamenti === 1 ? "di notte" : "tutti di notte")
+              : notturni + " di notte");
+        tip.appendChild(elemento("div", "dato", quanti + ", " + diNotte));
+
         tip.appendChild(elemento("div", "dato", "ultimo passaggio " + giornoOra(f.istante)));
-        if (f.notte) tip.appendChild(elemento("div", "dato", "ancora acceso di notte"));
         tip.classList.add("on");
 
         var scala = box.clientWidth / larghezza;
@@ -586,9 +596,21 @@
       "vicini fra loro vengono uniti, perché un singolo incendio ne illumina più di uno. " +
       "Le regioni sono ordinate per intensità del fuoco e non per numero di focolai. " +
       "I rilevamenti includono i roghi agricoli, frequenti in pianura d'estate dopo la " +
-      "trebbiatura: un fuoco ancora acceso di notte è quasi sempre un incendio fuori " +
-      "controllo, uno diurno e isolato molto spesso una bruciatura di stoppie.";
+      "trebbiatura.";
     piede.appendChild(metodo);
+
+    var indizi = elemento("p");
+    indizi.innerHTML = "<b>Come capire se è un incendio.</b> Passando sopra un cerchio " +
+      "compaiono <b>quante volte i satelliti hanno visto quel punto</b> e <b>quanti di " +
+      "quei passaggi erano notturni</b>: sono le due indicazioni che permettono di " +
+      "valutare quanto è probabile che si tratti di un incendio vero e non di un fuoco " +
+      "isolato. Un punto visto una volta sola e di giorno è spesso una bruciatura di " +
+      "residui agricoli, che si esaurisce in un'ora; uno visto da più passaggi " +
+      "successivi sta durando, e uno ancora acceso nel cuore della notte è quasi sempre " +
+      "un fuoco che nessuno sta controllando — alle tre del mattino nessuno brucia le " +
+      "stoppie sotto sorveglianza. Restano indizi, non certezze: la mappa li mostra e " +
+      "lascia la valutazione a chi legge.";
+    piede.appendChild(indizi);
 
     var unita = elemento("p");
     unita.innerHTML = "<b>Perché i megawatt.</b> Dallo spazio non si misurano gli ettari " +
