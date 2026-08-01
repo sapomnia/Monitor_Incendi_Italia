@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gli incendi in Italia nelle ultime 24 ore</title>
-<meta name="description" content="Mappa aggiornata ogni giorno dei focolai rilevati dai satelliti NASA sul territorio italiano.">
+<meta name="description" content="Mappa aggiornata ogni giorno degli incendi rilevati dai satelliti NASA sul territorio italiano.">
 <style>
   :root {
     --nero: #161616;
@@ -198,11 +198,11 @@
     <div>
       <div class="mappa-box" id="mappa-box">
         <svg class="mappa" id="mappa" role="img" aria-labelledby="titolo-mappa"></svg>
-        <title id="titolo-mappa">Mappa dei focolai rilevati sul territorio italiano</title>
+        <title id="titolo-mappa">Mappa degli incendi rilevati sul territorio italiano</title>
         <div class="tip" id="tip"></div>
       </div>
       <div class="legenda">
-        <span><i class="pallino"></i> focolaio diurno</span>
+        <span><i class="pallino"></i> incendio diurno</span>
         <span><i class="pallino notte"></i> ancora acceso di notte</span>
         <span class="misure" id="misure"></span>
       </div>
@@ -215,7 +215,7 @@
       <div id="classifica"></div>
 
       <div class="storico" id="storico" hidden>
-        <h2>Focolai giorno per giorno</h2>
+        <h2>Incendi giorno per giorno</h2>
         <div class="colonne" id="colonne"></div>
         <div class="assex" id="assex"></div>
       </div>
@@ -353,10 +353,10 @@
   function disegnaCifre(dati) {
     var t = dati.totali;
     var voci = [
-      // "rilevati", non "attivi": il satellite vede il fuoco quando passa, non
-      // osserva mai lo spegnimento. Un focolaio in mappa puo essere spento da
-      // ore senza che nessun dato lo dica.
-      { valore: numero(t.focolai), voce: "focolai rilevati", acceso: true },
+      // Mai "attivi": il satellite vede il fuoco quando passa e non osserva
+      // mai lo spegnimento. Un cerchio in mappa puo essere spento da ore senza
+      // che nessun dato lo dica.
+      { valore: numero(t.focolai), voce: "incendi rilevati", acceso: true },
       { valore: numero(t.rilevamenti), voce: "rilevamenti satellitari" },
       { valore: numero(dati.focolai.filter(function (f) { return f.notte; }).length), voce: "accesi di notte" },
       { valore: numero(t.frp) + " MW", voce: "intensità totale" }
@@ -374,7 +374,7 @@
   function disegnaSommario(dati) {
     var t = dati.totali;
     var testo = "I satelliti della Nasa hanno rilevato <b>" + numero(t.focolai) +
-      (t.focolai === 1 ? " focolaio" : " focolai") + "</b> sul territorio italiano tra le " +
+      (t.focolai === 1 ? " incendio" : " incendi") + "</b> sul territorio italiano tra le " +
       ora(dati.finestra.inizio) + " di " + giornoLungo(dati.finestra.inizio) +
       " e le " + ora(dati.finestra.fine) + " di " + giornoLungo(dati.finestra.fine);
     if (dati.finestra.ultimo_rilevamento) {
@@ -420,8 +420,8 @@
     var distanza = Math.max.apply(null, dubbi.map(function (d) { return d.distanza_km; }));
 
     var testo = "<b>Attenzione.</b> " + (dubbi.length === 1
-      ? "Un focolaio in mappa si trova"
-      : numero(dubbi.length) + " focolai in mappa si trovano") +
+      ? "Un incendio in mappa si trova"
+      : numero(dubbi.length) + " incendi in mappa si trovano") +
       " a ridosso " + (nomi.length === 1 ? "del vulcano " : "dei vulcani ") +
       nomi.join(" e ") + ", fino a " + numero(distanza, 1) + " km dal cratere: " +
       (dubbi.length === 1 ? "potrebbe non essere un incendio" : "potrebbero non essere incendi") +
@@ -523,7 +523,7 @@
     contenitore.innerHTML = "";
     if (!dati.per_regione.length) {
       contenitore.appendChild(elemento("p", "vuoto",
-        "Nessun focolaio rilevato in Italia nelle ultime 24 ore."));
+        "Nessun incendio rilevato in Italia nelle ultime 24 ore."));
       return;
     }
     var massimo = dati.per_regione[0].frp || 1;
@@ -533,7 +533,7 @@
 
       var num = elemento("div", "num");
       num.innerHTML = "<b>" + numero(v.frp, 1) + " MW</b> · " + v.focolai +
-        (v.focolai === 1 ? " focolaio" : " focolai") +
+        (v.focolai === 1 ? " incendio" : " incendi") +
         (v.notturni ? " · " + v.notturni + " di notte" : "");
       riga.appendChild(num);
 
@@ -557,13 +557,16 @@
     var giorni = (storico && storico.giorni) || [];
     if (giorni.length < 2) return;
     giorni = giorni.slice(-30);
-    var massimo = giorni.reduce(function (m, g) { return Math.max(m, g.focolai); }, 1);
+    // Il grafico segue la stessa definizione della mappa: conta gli incendi,
+    // non tutti i focolai, altrimenti la serie racconterebbe un'altra storia.
+    function quanti(g) { return g.incendi !== undefined ? g.incendi : g.focolai; }
+    var massimo = giorni.reduce(function (m, g) { return Math.max(m, quanti(g)); }, 1);
     var colonne = document.getElementById("colonne");
     colonne.innerHTML = "";
     giorni.forEach(function (g, i) {
       var col = elemento("div", "col" + (i === giorni.length - 1 ? " oggi" : ""));
-      col.style.height = Math.max(4, (g.focolai / massimo) * 100) + "%";
-      col.title = g.giorno + ": " + g.focolai + " focolai";
+      col.style.height = Math.max(4, (quanti(g) / massimo) * 100) + "%";
+      col.title = g.giorno + ": " + quanti(g) + " incendi";
       colonne.appendChild(col);
     });
     var asse = document.getElementById("assex");
@@ -572,7 +575,7 @@
     var ultimo = new Date(giorni[giorni.length - 1].giorno + "T12:00:00Z");
     var formato = { day: "numeric", month: "short" };
     asse.appendChild(elemento("span", null, primo.toLocaleDateString("it-IT", formato)));
-    asse.appendChild(elemento("span", null, "massimo " + massimo + " focolai"));
+    asse.appendChild(elemento("span", null, "massimo " + massimo + " incendi"));
     asse.appendChild(elemento("span", null, ultimo.toLocaleDateString("it-IT", formato)));
     document.getElementById("storico").hidden = false;
   }
@@ -582,13 +585,25 @@
     piede.innerHTML = "";
 
     var metodo = elemento("p");
-    metodo.innerHTML = "<b>Come si legge.</b> Ogni cerchio è un focolaio: i pixel accesi " +
-      "vicini fra loro vengono uniti, perché un singolo incendio ne illumina più di uno. " +
-      "Le regioni sono ordinate per intensità del fuoco e non per numero di focolai. " +
-      "I rilevamenti includono i roghi agricoli, frequenti in pianura d'estate dopo la " +
-      "trebbiatura: un fuoco ancora acceso di notte è quasi sempre un incendio fuori " +
-      "controllo, uno diurno e isolato molto spesso una bruciatura di stoppie.";
+    metodo.innerHTML = "<b>Come si legge.</b> Ogni cerchio è un incendio: i pixel accesi " +
+      "vicini fra loro vengono uniti, perché un solo fuoco ne illumina più d'uno e più " +
+      "satelliti lo vedono nello stesso giro d'orologio. Le regioni sono ordinate per " +
+      "intensità e non per numero di incendi.";
     piede.appendChild(metodo);
+
+    var criterio = elemento("p");
+    criterio.innerHTML = "<b>Che cosa finisce in mappa.</b> Solo i fuochi rilevati di " +
+      "notte, oppure visti da più passaggi successivi del satellite. Nessuno brucia le " +
+      "stoppie alle tre del mattino, e una bruciatura agricola si consuma prima che il " +
+      "satellite ripassi, mentre un incendio è ancora lì. Restano fuori <b>" +
+      numero(dati.totali.fuochi_isolati || 0) + " fuochi isolati</b>, diurni e visti una " +
+      "volta sola, per " + numero(dati.totali.frp_fuochi_isolati || 0) + " MW. In larga " +
+      "parte sono roghi di stoppie, sfalci e potature, ma il dato satellitare non " +
+      "permette di affermarne la causa: per questo non li chiamiamo agricoli. Fra loro " +
+      "può nascondersi anche un incendio appena scoppiato, che comparirà nel prossimo " +
+      "aggiornamento. Il criterio distingue il fuoco sorvegliato da quello che non lo è, " +
+      "non è un accertamento sull'origine.";
+    piede.appendChild(criterio);
 
     var unita = elemento("p");
     unita.innerHTML = "<b>Perché i megawatt.</b> Dallo spazio non si misurano gli ettari " +
