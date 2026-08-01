@@ -51,7 +51,23 @@ jobs:
           # Facoltativo. Se il secret non esiste la variabile resta vuota e gli
           # script usano i feed pubblici, che non richiedono chiave.
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
-        run: python3 scripts/fetch_fires.py
+        # Il codice 75 vuol dire "i feed della NASA erano irraggiungibili da
+        # questo runner": capita, e insistere non serve perche un runner nato
+        # senza rete resta senza rete per tutta la sua vita. Non facciamo
+        # fallire il workflow, altrimenti arriva una mail ogni volta che GitHub
+        # ha il singhiozzo e il sistema si ripara da solo poche ore dopo.
+        # L'allarme resta in capo alla sorveglianza, che ritenta da una
+        # macchina diversa e avvisa solo se non ci riesce.
+        run: |
+          set +e
+          python3 scripts/fetch_fires.py
+          codice=$?
+          set -e
+          if [ "$codice" -eq 75 ]; then
+            echo "::warning::Feed NASA irraggiungibili da questo runner: dati non aggiornati, ci riprova la sorveglianza."
+            exit 0
+          fi
+          exit "$codice"
 
       - name: Pubblica i dati aggiornati
         run: |

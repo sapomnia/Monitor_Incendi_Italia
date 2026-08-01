@@ -185,6 +185,19 @@ Se vuoi rifare la prova in futuro: **Actions → Sorveglia la freschezza dei dat
 → Run workflow**, e metti `0` nel campo della soglia. Lasciandolo vuoto usa il
 valore normale.
 
+**Una mail sola, e solo quando serve.** Se *tutte* le sorgenti risultano
+irraggiungibili, `fetch_fires.py` esce con il codice **75** (`EX_TEMPFAIL`) e il
+workflow principale lo tratta come avviso, non come errore: nessuna mail. È il
+guasto osservato il 31 luglio e il 1° agosto, quando il runner di GitHub è nato
+senza rotta di rete verso l'esterno — dodici errori `Network is unreachable` in
+venticinque minuti, mentre gli stessi feed rispondevano in meno di un secondo da
+altrove. Insistere non serve: un runner senza rete resta senza rete per tutta la
+sua vita, e l'unica cosa che funziona è ritentare da una macchina diversa, cioè
+quello che fa la sorveglianza qualche ora dopo. L'allarme resta quindi in capo a
+lei, che avvisa solo se **dopo il tentativo** i dati sono ancora fermi. Gli
+errori veri — confini mancanti, archivio corrotto, bug — continuano a uscire con
+1 e a far fallire il workflow rumorosamente.
+
 **Ogni download viene ritentato tre volte** con attesa crescente, rispettando
 l'eventuale `Retry-After` del server. I 502 e 503 passeggeri della NASA
 altrimenti farebbero saltare un sensore per l'intera giornata. Sugli errori

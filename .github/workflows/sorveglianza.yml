@@ -54,7 +54,20 @@ jobs:
         if: steps.controllo.outputs.stantio == 'true'
         env:
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
-        run: python3 scripts/fetch_fires.py
+        # Anche qui il 75 non fa fallire subito il passo: meglio arrivare alla
+        # verifica finale, che dice con parole chiare che i dati sono ancora
+        # fermi e perche. Se la riparazione non riesce la mail parte comunque,
+        # solo con un messaggio piu utile.
+        run: |
+          set +e
+          python3 scripts/fetch_fires.py
+          codice=$?
+          set -e
+          if [ "$codice" -eq 75 ]; then
+            echo "::warning::Feed NASA irraggiungibili anche da qui: la verifica finale fara fallire l'esecuzione."
+            exit 0
+          fi
+          exit "$codice"
 
       - name: Pubblica il recupero
         if: steps.controllo.outputs.stantio == 'true'

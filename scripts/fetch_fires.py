@@ -87,6 +87,13 @@ RAGGIO_PUNTO_CALDO_M = 1000
 
 GIORNI_STORICO = 60
 
+# Codice d'uscita per i guasti passeggeri (convenzione EX_TEMPFAIL). Serve a
+# distinguere "la rete non andava" da "il programma e rotto": i workflow lo
+# trattano come avviso invece che come errore, perche riprovare dallo stesso
+# runner non serve a nulla e l'allarme spetta alla sorveglianza, che ritenta da
+# una macchina diversa qualche ora dopo.
+USCITA_TEMPORANEA = 75
+
 
 # --------------------------------------------------------------------------
 # Geometria
@@ -561,7 +568,9 @@ def main():
         grezzi.extend(righe)
 
     if not sorgenti_ok:
-        sys.exit("Nessuna sorgente raggiungibile: non aggiorno i dati.")
+        print("Nessuna sorgente raggiungibile: non aggiorno i dati.", file=sys.stderr)
+        print("La pagina resta all'ultimo dato buono invece di azzerarsi.", file=sys.stderr)
+        sys.exit(USCITA_TEMPORANEA)
 
     # Finestra temporale.
     in_finestra = [r for r in grezzi if inizio_finestra <= r["istante"] <= adesso]
