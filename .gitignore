@@ -2,5 +2,6 @@
 
 # Documenti interni: restano sul disco, non sul repository pubblico.
 nota-per-la-direzione.pdf
+CLAUDE.md
 *.pyc
 __pycache__/
