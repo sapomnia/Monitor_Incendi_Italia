@@ -678,15 +678,31 @@
 
   function avvisaAltezza() {
     if (window.parent === window) return;
+
+    var ultima = 0;
     var invia = function () {
+      // Non documentElement.scrollHeight: dentro un iframe restituisce il
+      // massimo fra contenuto e viewport, quindi una volta cresciuto l'iframe
+      // non tornerebbe mai piu piccolo. L'altezza del body e quella vera.
+      var corpo = Math.ceil(document.body.getBoundingClientRect().height);
+      if (!corpo || corpo === ultima) return;
+      ultima = corpo;
       window.parent.postMessage({
         tipo: "incendi-italia-altezza",
-        altezza: document.documentElement.scrollHeight
+        altezza: corpo
       }, "*");
     };
+
     invia();
     window.addEventListener("resize", invia);
     if (window.ResizeObserver) new ResizeObserver(invia).observe(document.body);
+
+    // Rete di sicurezza. Quando l'iframe viene ridimensionato dal contenitore
+    // capita che ne il resize ne il ResizeObserver scattino, e l'altezza resta
+    // quella vecchia: verificato. Un controllo periodico copre quei casi, e
+    // siccome invia solo quando l'altezza e davvero cambiata non produce
+    // traffico ne lavoro inutile.
+    setInterval(invia, 500);
   }
 
   function errore(messaggio) {
